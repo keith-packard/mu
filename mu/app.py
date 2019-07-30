@@ -42,6 +42,7 @@ from mu.modes import (
     ESPMode,
     WebMode,
     PyboardMode,
+    SnekMode,
 )
 from mu.debugger.runner import run as run_debugger
 from mu.interface.themes import NIGHT_STYLE, DAY_STYLE, CONTRAST_STYLE
@@ -84,6 +85,7 @@ def setup_modes(editor, view):
     """
     modes = {
         "python": PythonMode(editor, view),
+        "snek": SnekMode(editor, view),
         "circuitpython": CircuitPythonMode(editor, view),
         "microbit": MicrobitMode(editor, view),
         "esp": ESPMode(editor, view),

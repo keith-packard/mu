@@ -508,6 +508,443 @@ def test_MicroPythonREPLPane_execute():
         assert mock_timer.singleShot.call_count == 1
 
 
+def test_SnekREPLPane_init_default_args():
+    """
+    Ensure the MicroPython REPLPane object is instantiated as expected.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    assert rp.serial == mock_serial
+
+
+def test_SnekREPLPane_paste():
+    """
+    Pasting into the REPL should send bytes via the serial connection.
+    """
+    mock_serial = mock.MagicMock()
+    mock_clipboard = mock.MagicMock()
+    mock_clipboard.text.return_value = "paste me!"
+    mock_application = mock.MagicMock()
+    mock_application.clipboard.return_value = mock_clipboard
+    with mock.patch("mu.interface.panes.QApplication", mock_application):
+        rp = mu.interface.panes.SnekREPLPane(mock_serial)
+        rp.paste()
+    mock_serial.write.assert_called_once_with(bytes("paste me!", "utf8"))
+
+
+def test_SnekREPLPane_paste_handle_unix_newlines():
+    """
+    Pasting into the REPL should handle '\n' properly.
+
+    '\n' -> '\r'
+    """
+    mock_serial = mock.MagicMock()
+    mock_clipboard = mock.MagicMock()
+    mock_clipboard.text.return_value = "paste\nme!"
+    mock_application = mock.MagicMock()
+    mock_application.clipboard.return_value = mock_clipboard
+    with mock.patch("mu.interface.panes.QApplication", mock_application):
+        rp = mu.interface.panes.SnekREPLPane(mock_serial)
+        rp.paste()
+    mock_serial.write.assert_called_once_with(bytes("paste\rme!", "utf8"))
+
+
+def test_SnekREPLPane_paste_handle_windows_newlines():
+    """
+    Pasting into the REPL should handle '\r\n' properly.
+
+    '\r\n' -> '\r'
+    """
+    mock_serial = mock.MagicMock()
+    mock_clipboard = mock.MagicMock()
+    mock_clipboard.text.return_value = "paste\r\nme!"
+    mock_application = mock.MagicMock()
+    mock_application.clipboard.return_value = mock_clipboard
+    with mock.patch("mu.interface.panes.QApplication", mock_application):
+        rp = mu.interface.panes.SnekREPLPane(mock_serial)
+        rp.paste()
+    mock_serial.write.assert_called_once_with(bytes("paste\rme!", "utf8"))
+
+
+def test_SnekREPLPane_paste_only_works_if_there_is_something_to_paste():
+    """
+    Pasting into the REPL should send bytes via the serial connection.
+    """
+    mock_serial = mock.MagicMock()
+    mock_clipboard = mock.MagicMock()
+    mock_clipboard.text.return_value = ""
+    mock_application = mock.MagicMock()
+    mock_application.clipboard.return_value = mock_clipboard
+    with mock.patch("mu.interface.panes.QApplication", mock_application):
+        rp = mu.interface.panes.SnekREPLPane(mock_serial)
+        rp.paste()
+    assert mock_serial.write.call_count == 0
+
+
+def test_SnekREPLPane_context_menu():
+    """
+    Ensure the context menu for the REPL is configured correctly for non-OSX
+    platforms.
+    """
+    mock_serial = mock.MagicMock()
+    mock_platform = mock.MagicMock()
+    mock_platform.system.return_value = "WinNT"
+    mock_qmenu = mock.MagicMock()
+    mock_qmenu_class = mock.MagicMock(return_value=mock_qmenu)
+    with mock.patch("mu.interface.panes.platform", mock_platform), mock.patch(
+        "mu.interface.panes.QMenu", mock_qmenu_class
+    ), mock.patch("mu.interface.panes.QCursor"):
+        rp = mu.interface.panes.SnekREPLPane(mock_serial)
+        rp.context_menu()
+    assert mock_qmenu.addAction.call_count == 2
+    copy_action = mock_qmenu.addAction.call_args_list[0][0]
+    assert copy_action[0] == "Copy"
+    assert copy_action[1] == rp.copy
+    assert copy_action[2].toString() == "Ctrl+Shift+C"
+    paste_action = mock_qmenu.addAction.call_args_list[1][0]
+    assert paste_action[0] == "Paste"
+    assert paste_action[1] == rp.paste
+    assert paste_action[2].toString() == "Ctrl+Shift+V"
+    assert mock_qmenu.exec_.call_count == 1
+
+
+def test_SnekREPLPane_context_menu_darwin():
+    """
+    Ensure the context menu for the REPL is configured correctly for non-OSX
+    platforms.
+    """
+    mock_serial = mock.MagicMock()
+    mock_platform = mock.MagicMock()
+    mock_platform.system.return_value = "Darwin"
+    mock_qmenu = mock.MagicMock()
+    mock_qmenu_class = mock.MagicMock(return_value=mock_qmenu)
+    with mock.patch("mu.interface.panes.platform", mock_platform), mock.patch(
+        "mu.interface.panes.QMenu", mock_qmenu_class
+    ), mock.patch("mu.interface.panes.QCursor"):
+        rp = mu.interface.panes.SnekREPLPane(mock_serial)
+        rp.context_menu()
+    assert mock_qmenu.addAction.call_count == 2
+    copy_action = mock_qmenu.addAction.call_args_list[0][0]
+    assert copy_action[0] == "Copy"
+    assert copy_action[1] == rp.copy
+    assert copy_action[2].toString() == "Ctrl+C"
+    paste_action = mock_qmenu.addAction.call_args_list[1][0]
+    assert paste_action[0] == "Paste"
+    assert paste_action[1] == rp.paste
+    assert paste_action[2].toString() == "Ctrl+V"
+    assert mock_qmenu.exec_.call_count == 1
+
+
+def test_SnekREPLPane_keyPressEvent():
+    """
+    Ensure key presses in the REPL are handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_A)
+    data.text = mock.MagicMock(return_value="a")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(bytes("a", "utf-8"))
+
+
+def test_SnekREPLPane_keyPressEvent_backspace():
+    """
+    Ensure backspaces in the REPL are handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_Backspace)
+    data.text = mock.MagicMock(return_value="\b")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(b"\b")
+
+
+def test_SnekREPLPane_keyPressEvent_delete():
+    """
+    Ensure delete in the REPL is handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_Delete)
+    data.text = mock.MagicMock(return_value="\b")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(b"\x1B[\x33\x7E")
+
+
+def test_SnekREPLPane_keyPressEvent_up():
+    """
+    Ensure up arrows in the REPL are handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_Up)
+    data.text = mock.MagicMock(return_value="1b")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(b"\x1B[A")
+
+
+def test_SnekREPLPane_keyPressEvent_down():
+    """
+    Ensure down arrows in the REPL are handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_Down)
+    data.text = mock.MagicMock(return_value="1b")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(b"\x1B[B")
+
+
+def test_SnekREPLPane_keyPressEvent_right():
+    """
+    Ensure right arrows in the REPL are handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_Right)
+    data.text = mock.MagicMock(return_value="1b")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(b"\x1B[C")
+
+
+def test_SnekREPLPane_keyPressEvent_left():
+    """
+    Ensure left arrows in the REPL are handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_Left)
+    data.text = mock.MagicMock(return_value="1b")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(b"\x1B[D")
+
+
+def test_SnekREPLPane_keyPressEvent_home():
+    """
+    Ensure home key in the REPL is handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_Home)
+    data.text = mock.MagicMock(return_value="1b")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(b"\x1B[H")
+
+
+def test_SnekREPLPane_keyPressEvent_end():
+    """
+    Ensure end key in the REPL is handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_End)
+    data.text = mock.MagicMock(return_value="1b")
+    data.modifiers = mock.MagicMock(return_value=None)
+    rp.keyPressEvent(data)
+    mock_serial.write.assert_called_once_with(b"\x1B[F")
+
+
+def test_SnekREPLPane_keyPressEvent_CTRL_C_Darwin():
+    """
+    Ensure end key in the REPL is handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    rp.copy = mock.MagicMock()
+    data = mock.MagicMock()
+    data.key = mock.MagicMock(return_value=Qt.Key_C)
+    data.text = mock.MagicMock(return_value="1b")
+    data.modifiers.return_value = Qt.ControlModifier | Qt.ShiftModifier
+    rp.keyPressEvent(data)
+    rp.copy.assert_called_once_with()
+
+
+def test_SnekREPLPane_keyPressEvent_CTRL_V_Darwin():
+    """
+    Ensure end key in the REPL is handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    rp.paste = mock.MagicMock()
+    data = mock.MagicMock()
+    data.key = mock.MagicMock(return_value=Qt.Key_V)
+    data.text = mock.MagicMock(return_value="1b")
+    data.modifiers.return_value = Qt.ControlModifier | Qt.ShiftModifier
+    rp.keyPressEvent(data)
+    rp.paste.assert_called_once_with()
+
+
+def test_SnekREPLPane_keyPressEvent_meta():
+    """
+    Ensure backspaces in the REPL are handled correctly.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    data = mock.MagicMock
+    data.key = mock.MagicMock(return_value=Qt.Key_M)
+    data.text = mock.MagicMock(return_value="a")
+    if platform.system() == "Darwin":
+        data.modifiers = mock.MagicMock(return_value=Qt.MetaModifier)
+    else:
+        data.modifiers = mock.MagicMock(return_value=Qt.ControlModifier)
+    rp.keyPressEvent(data)
+    expected = 1 + Qt.Key_M - Qt.Key_A
+    mock_serial.write.assert_called_once_with(bytes([expected]))
+
+
+def test_SnekREPLPane_process_bytes():
+    """
+    Ensure bytes coming from the device to the application are processed as
+    expected. Backspace is enacted, carriage-return is ignored, newline moves
+    the cursor position to the end of the line before enacted and all others
+    are simply inserted.
+    """
+    mock_serial = mock.MagicMock()
+    mock_tc = mock.MagicMock()
+    mock_tc.movePosition = mock.MagicMock(
+        side_effect=[True, False, True, True]
+    )
+    mock_tc.deleteChar = mock.MagicMock(return_value=None)
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    rp.textCursor = mock.MagicMock(return_value=mock_tc)
+    rp.setTextCursor = mock.MagicMock(return_value=None)
+    rp.insertPlainText = mock.MagicMock(return_value=None)
+    rp.ensureCursorVisible = mock.MagicMock(return_value=None)
+    bs = bytes([8, 13, 10, 65])  # \b, \r, \n, 'A'
+    rp.process_bytes(bs)
+    rp.textCursor.assert_called_once_with()
+    assert mock_tc.movePosition.call_count == 4
+    assert mock_tc.movePosition.call_args_list[0][0][0] == QTextCursor.Down
+    assert mock_tc.movePosition.call_args_list[1][0][0] == QTextCursor.Down
+    assert mock_tc.movePosition.call_args_list[2][0][0] == QTextCursor.Left
+    assert mock_tc.movePosition.call_args_list[3][0][0] == QTextCursor.End
+    assert rp.setTextCursor.call_count == 3
+    assert rp.setTextCursor.call_args_list[0][0][0] == mock_tc
+    assert rp.setTextCursor.call_args_list[1][0][0] == mock_tc
+    assert rp.setTextCursor.call_args_list[2][0][0] == mock_tc
+    assert rp.insertPlainText.call_count == 2
+    assert rp.insertPlainText.call_args_list[0][0][0] == chr(10)
+    assert rp.insertPlainText.call_args_list[1][0][0] == chr(65)
+    rp.ensureCursorVisible.assert_called_once_with()
+
+
+def test_SnekREPLPane_process_bytes_gettext():
+    """
+    Ensure bytes coming from the device to the application in 'gettext' mode
+    are processed as expected. Carriage-return is
+    ignored, all others are simply passed to recv_text callback
+    """
+    mock_serial = mock.MagicMock()
+    mock_tc = mock.MagicMock()
+    mock_tc.movePosition = mock.MagicMock(
+        side_effect=[True, False, True, True]
+    )
+    mock_tc.deleteChar = mock.MagicMock(return_value=None)
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    rp.textCursor = mock.MagicMock(return_value=mock_tc)
+    rp.setTextCursor = mock.MagicMock(return_value=None)
+    rp.insertPlainText = mock.MagicMock(return_value=None)
+    rp.ensureCursorVisible = mock.MagicMock(return_value=None)
+    rp.text_recv = mock.MagicMock()
+    rp.text_recv.recv_text = mock.MagicMock()
+    bs = bytes([2, 65, 66, 67, 13, 3])  # \2, 'A', 'B', 'C' \r \3
+    rp.process_bytes(bs)
+    rp.text_recv.recv_text.assert_called_once_with("ABC")
+
+
+def test_SnekREPLPane_clear():
+    """
+    Ensure setText is called with an empty string.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    rp.setText = mock.MagicMock(return_value=None)
+    rp.clear()
+    rp.setText.assert_called_once_with("")
+
+
+def test_SnekREPLPane_set_font_size():
+    """
+    Ensure the font is updated to the expected point size.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    mock_font = mock.MagicMock()
+    rp.font = mock.MagicMock(return_value=mock_font)
+    rp.setFont = mock.MagicMock()
+    rp.set_font_size(123)
+    mock_font.setPointSize.assert_called_once_with(123)
+    rp.setFont.assert_called_once_with(mock_font)
+
+
+def test_SnekREPLPane_set_zoom():
+    """
+    Ensure the font size is correctly set from the t-shirt size.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    rp.set_font_size = mock.MagicMock()
+    rp.set_zoom("xxl")
+    expected = mu.interface.panes.PANE_ZOOM_SIZES["xxl"]
+    rp.set_font_size.assert_called_once_with(expected)
+
+
+def test_SnekREPLPane_send_commands():
+    """
+    Ensure the list of commands is correctly encoded and bound by control
+    commands to put the board into and out of raw mode.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    rp.execute = mock.MagicMock()
+    commands = [
+        "import os\n",
+        "print(os.listdir())\n",
+    ]
+    rp.send_commands(commands)
+    expected = [
+        b"\x0e\x03",  # Put the board into raw mode.
+        b"import os\n",  # The commands to run.
+        b"print(os.listdir())\n",
+        b"\x0f",  # Evaluate the commands.
+    ]
+    rp.execute.assert_called_once_with(expected)
+
+
+def test_SnekREPLPane_execute():
+    """
+    Ensure the first command is sent via serial to the connected device, and
+    further commands are scheduled for the future.
+    """
+    mock_serial = mock.MagicMock()
+    rp = mu.interface.panes.SnekREPLPane(mock_serial)
+    commands = [
+        b"A",
+        b"B",
+    ]
+    with mock.patch("mu.interface.panes.QTimer") as mock_timer:
+        rp.execute(commands)
+        mock_serial.write.assert_called_once_with(b"A")
+        assert mock_timer.singleShot.call_count == 1
+
+
 def test_MuFileList_show_confirm_overwrite_dialog():
     """
     Ensure the user is notified of an existing file.

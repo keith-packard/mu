@@ -63,6 +63,7 @@ from mu.interface.panes import (
     MicroPythonREPLPane,
     FileSystemPane,
     PlotterPane,
+    SnekREPLPane,
 )
 from mu.interface.editor import EditorPane
 from mu.resources import load_icon, load_pixmap
@@ -513,7 +514,7 @@ class Window(QMainWindow):
         """
         self.data_received.emit(data)
 
-    def open_serial_link(self, port):
+    def open_serial_link(self, port, rate=115200):
         """
         Creates a new serial link instance.
         """
@@ -531,7 +532,7 @@ class Window(QMainWindow):
                 pyser.dtr = True
                 pyser.close()
                 self.serial.open(QIODevice.ReadWrite)
-            self.serial.setBaudRate(115200)
+            self.serial.setBaudRate(rate)
             self.serial.readyRead.connect(self.on_serial_read)
         else:
             msg = _("Cannot connect to device on port {}").format(port)
@@ -591,6 +592,23 @@ class Window(QMainWindow):
                 # Send a Control-C / keyboard interrupt.
                 self.serial.write(b"\x03")
         repl_pane = MicroPythonREPLPane(serial=self.serial)
+        self.data_received.connect(repl_pane.process_bytes)
+        self.add_repl(repl_pane, name)
+
+    def add_snek_repl(self, port, name, force_interrupt=True, rate=115200):
+        """
+        Adds a Snek based REPL pane to the application.
+        """
+        if not self.serial:
+            self.open_serial_link(port, rate=rate)
+            self.serial.setFlowControl(QSerialPort.SoftwareControl)
+
+            if force_interrupt:
+                # Send a Control-O / exit raw mode.
+                self.serial.write(b"\x0f")
+                # Send a Control-C / keyboard interrupt.
+                self.serial.write(b"\x03")
+        repl_pane = SnekREPLPane(serial=self.serial)
         self.data_received.connect(repl_pane.process_bytes)
         self.add_repl(repl_pane, name)
 

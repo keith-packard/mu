@@ -101,6 +101,8 @@ class BaseMode(QObject):
     file_extensions = []
     module_names = MODULE_NAMES
     code_template = _("# Write your code here :-)")
+    vid = None
+    pid = None
 
     def __init__(self, editor, view):
         self.editor = editor
@@ -268,6 +270,8 @@ class MicroPythonMode(BaseMode):
                 if with_logging:
                     logger.info("Found device on port: {}".format(port_name))
                     logger.info("Serial number: {}".format(serial_number))
+                self.vid = vid
+                self.pid = pid
                 return (self.port_path(port_name), serial_number)
         if with_logging:
             logger.warning("Could not find device.")

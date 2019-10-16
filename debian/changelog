@@ -1,3 +1,16 @@
+mu-editor (1.1.0~a2-2) unstable; urgency=medium
+
+  * Adjust snek mode to avoid smashing existing files
+
+ -- Keith Packard <keithp@keithp.com>  Mon, 04 Nov 2019 14:10:39 -0800
+
+mu-editor (1.1.0~a2-1) unstable; urgency=medium
+
+  * New upstream version
+  * Snek mode
+
+ -- Keith Packard <keithp@keithp.com>  Wed, 16 Oct 2019 14:09:55 -0700
+
 mu (1.0.0~beta8) stretch; urgency=medium
 
   * Repackage

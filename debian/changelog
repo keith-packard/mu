@@ -1,3 +1,10 @@
+mu-editor (1.1.0~a2-3) unstable; urgency=medium
+
+  * Remove repl pane when serial line goes away
+  * Add USB id for Arduino SA Nano 33 IoT board
+
+ -- Keith Packard <keithp@keithp.com>  Tue, 12 Nov 2019 00:24:51 -0800
+
 mu-editor (1.1.0~a2-2) unstable; urgency=medium
 
   * Adjust snek mode to avoid smashing existing files

@@ -329,10 +329,9 @@ class SnekMode(MicroPythonMode):
                     device_port, self.name, self.force_interrupt, rate=rate
                 )
                 logger.info("Started REPL on port: {}".format(device_port))
-                self.repl = True
             except IOError as ex:
                 logger.error(ex)
-                self.repl = False
+                self.view.remove_repl()
                 info = _(
                     "Click on the device's reset button, wait a few"
                     " seconds and then try again."

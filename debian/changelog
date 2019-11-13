@@ -1,3 +1,10 @@
+mu-editor (1.1.0~a2-4) unstable; urgency=medium
+
+  * Add USB id for Arduino Mega 2560
+  * Use software flow control on serial port
+
+ -- Keith Packard <keithp@keithp.com>  Tue, 12 Nov 2019 19:21:38 -0800
+
 mu-editor (1.1.0~a2-3) unstable; urgency=medium
 
   * Remove repl pane when serial line goes away

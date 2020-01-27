@@ -1,3 +1,9 @@
+mu-editor (1.1.0~a2-7) unstable; urgency=medium
+
+  * Merge upstream
+
+ -- Keith Packard <keithp@keithp.org>  Mon, 27 Jan 2020 10:33:28 -0800
+
 mu-editor (1.1.0~a2-6) unstable; urgency=medium
 
   * Make sure put 'snek' script ends with newline

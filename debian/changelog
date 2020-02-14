@@ -1,3 +1,10 @@
+mu-editor (1.1.0~a2-8) unstable; urgency=medium
+
+  * Merge upstream
+  * Fix a bunch of 'make check' complaints
+
+ -- Keith Packard <keithp@keithp.org>  Thu, 13 Feb 2020 17:59:14 -0800
+
 mu-editor (1.1.0~a2-7) unstable; urgency=medium
 
   * Merge upstream

@@ -58,7 +58,7 @@ LOG_FILE = os.path.join(LOG_DIR, "mu.log")
 # Regex to match pycodestyle (PEP8) output.
 STYLE_REGEX = re.compile(r".*:(\d+):(\d+):\s+(.*)")
 # Regex to match flake8 output.
-FLAKE_REGEX = re.compile(r".*:(\d+):\s+(.*)")
+FLAKE_REGEX = re.compile(r".*:(\d+):\d*\s+(.*)")
 # Regex to match false positive flake errors if microbit.* is expanded.
 EXPAND_FALSE_POSITIVE = re.compile(r"^'microbit\.(\w+)' imported but unused$")
 # The text to which "from microbit import \*" should be expanded.

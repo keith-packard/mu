@@ -51,7 +51,6 @@ from mu.interface.themes import (
     DayTheme,
     NightTheme,
     ContrastTheme,
-    DEFAULT_FONT_SIZE,
 )
 from mu.interface.panes import (
     DebugInspector,
@@ -79,7 +78,9 @@ class ButtonBar(QToolBar):
     def __init__(self, parent):
         super().__init__(parent)
         self.setMovable(False)
-        self.setIconSize(QSize(64, 64))
+        dpi = QDesktopWidget().logicalDpiX()
+        icon_size = int(32 * dpi / 72)
+        self.setIconSize(QSize(icon_size, icon_size))
         self.setToolButtonStyle(3)
         self.setContextMenuPolicy(Qt.PreventContextMenu)
         self.setObjectName("StandardToolBar")
@@ -166,17 +167,12 @@ class ButtonBar(QToolBar):
 
     def set_responsive_mode(self, width, height):
         """
-        Compact button bar for when window is very small.
+        Compact fonts for when window is very small.
         """
-        font_size = DEFAULT_FONT_SIZE
-        if width < 1124 and height > 600:
-            self.setIconSize(QSize(48, 48))
-        elif height < 600 and width < 940:
-            font_size = 10
-            self.setIconSize(QSize(32, 32))
-        else:
-            self.setIconSize(QSize(64, 64))
-        stylesheet = "QWidget{font-size: " + str(font_size) + "px;}"
+        font_size = 10
+        if height < 600 and width < 940:
+            font_size = 8
+        stylesheet = "QWidget{font-size: " + str(font_size) + "pt;}"
         self.setStyleSheet(stylesheet)
 
     def addAction(self, name, display_name, tool_text):

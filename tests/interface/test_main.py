@@ -42,7 +42,7 @@ def test_ButtonBar_init():
     ):
         mu.interface.main.ButtonBar(None)
         mock_movable.assert_called_once_with(False)
-        mock_icon_size.assert_called_once_with(QSize(64, 64))
+        mock_icon_size.assert_called_once_with(QSize(44, 44))
         mock_tool_button_size.assert_called_once_with(3)
         mock_context_menu_policy.assert_called_once_with(Qt.PreventContextMenu)
         mock_object_name.assert_called_once_with("StandardToolBar")
@@ -101,16 +101,13 @@ def test_ButtonBar_set_responsive_mode():
         bb = mu.interface.main.ButtonBar(None)
         bb.setStyleSheet = mock.MagicMock()
         bb.set_responsive_mode(1124, 800)
-        mock_icon_size.assert_called_with(QSize(64, 64))
-        default_font = str(mu.interface.themes.DEFAULT_FONT_SIZE)
-        style = "QWidget{font-size: " + default_font + "px;}"
+        default_font = str(10)
+        style = "QWidget{font-size: " + default_font + "pt;}"
         bb.setStyleSheet.assert_called_with(style)
         bb.set_responsive_mode(939, 800)
-        mock_icon_size.assert_called_with(QSize(48, 48))
         bb.setStyleSheet.assert_called_with(style)
         bb.set_responsive_mode(939, 599)
-        mock_icon_size.assert_called_with(QSize(32, 32))
-        style = "QWidget{font-size: " + str(10) + "px;}"
+        style = "QWidget{font-size: " + str(8) + "pt;}"
         bb.setStyleSheet.assert_called_with(style)
 
 
@@ -1405,7 +1402,7 @@ def test_Window_update_title():
     w.setWindowTitle.assert_called_once_with("Mu - foo.py")
 
 
-def _qdesktopwidget_mock(width, height):
+def _qdesktopwidget_mock(width, height, dpi=72):
     """
     Create and return a usable mock for QDesktopWidget that supports the
     QDesktopWidget().screenGeometry() use case: it returns a mocked QRect
@@ -1416,6 +1413,7 @@ def _qdesktopwidget_mock(width, height):
     mock_screen.width = mock.MagicMock(return_value=width)
     mock_screen.height = mock.MagicMock(return_value=height)
     mock_sg.screenGeometry = mock.MagicMock(return_value=mock_screen)
+    mock_sg.logicalDpiX = mock.MagicMock(return_value=dpi)
     return mock.MagicMock(return_value=mock_sg)
 
 

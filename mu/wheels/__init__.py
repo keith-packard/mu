@@ -45,6 +45,7 @@ mode_packages = [
     # qtconsole at the version specified in setup.py
     # FIXME: ipykernel max ver added for macOS 10.13 compatibility, min taken
     # from qtconsole 4.7.7. This is mirrored in setup.py
+    ("ipython_genutils", "ipython_genutils>=0.1"),
     ("ipykernel", "ipykernel>=4.1,<6"),
     # FIXME: ipykernel<6 depends on ipython_genutils, but it isn't explicitly
     # declared as a dependency. It also depends on traitlets, which

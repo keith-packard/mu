@@ -52,7 +52,7 @@ install_requires = [
     #
     # adafruit-board-toolkit is used to find serial ports and help identify
     # CircuitPython boards in the CircuitPython mode.
-    "adafruit-board-toolkit~=1.1",
+    #"adafruit-board-toolkit~=1.1",
     "pyserial~=3.5",
     "nudatus>=0.0.3",
     # `flake8` is actually a testing/packaging dependency that, among other
@@ -138,6 +138,7 @@ setup(
         "mu.interface",
         "mu.modes.api",
         "mu.wheels",
+        "adafruit_board_toolkit",
     ],
     python_requires=">=3.5,<3.9",
     install_requires=install_requires,

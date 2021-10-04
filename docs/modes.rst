@@ -28,8 +28,6 @@ images below are used with permission, see :doc:`copyright`).
 Adafruit Mode
 +++++++++++++
 
-.. image:: circuit_playground.jpg
-
 `Adafruit <http://adafruit.com/>`_ make extraordinarily awesome boards for
 embedded development. Many of these boards run Adafruit's own flavour of 
 `MicroPython <http://micropython.org/>`_ called
@@ -82,8 +80,6 @@ are available by default.
 
 Standard Python3 Mode
 +++++++++++++++++++++
-
-.. image:: python.png
 
 This mode is for creating simple Python 3 programs. As with the other modes,
 there is a REPL for live programming, but in this case it is an iPython based

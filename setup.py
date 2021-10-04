@@ -26,34 +26,31 @@ install_requires = [
     # which are needed for the main editor to function.
     #
     "PyQt5-sip<=12.13.0"
+    "PyQt5>=5.11.3"
     + ';"arm" not in platform_machine and "aarch" not in platform_machine',
-    "PyQt5==5.13.2"
-    + ';"arm" not in platform_machine and "aarch" not in platform_machine',
-    "QScintilla==2.11.3"
-    + ';"arm" not in platform_machine and "aarch" not in platform_machine',
-    "PyQtChart==5.13.1"
+    "QScintilla>=2.10.4"
     + ';"arm" not in platform_machine and "aarch" not in platform_machine',
     # FIXME: Needed for qtconsole, this is the latest wheel in armv7l for
     # Python 3.7 (Buster), otherwise it tries to build from source and fails.
     "pyzmq<=26.0.3",
     # FIXME: jupyter-client added for Py3.5 compatibility, to be dropped after
     # Mu v1.1 release. So, qtconsole < 5 and jupyter-client < 6.2 (issue #1444)
-    "jupyter-client>=4.1,<6.2",
+    "jupyter-client>=4.1",
     # FIXME: ipykernel max added for macOS 10.13 compatibility, min taken from
     # qtconsole 4.7.7. Full line can be removed after Mu v1.1 release.
     # Dependency mirrored for user venv in mu/wheels/__init__.py
-    "ipykernel>=4.1,<6",
+    "ipykernel>=4.1",
     # FIXME: ipykernel<6 depends on ipython_genutils, but it isn't explicitly
     # declared as a dependency. It also depends on traitlets, which
     # incidentally brought ipython_genutils, but in v5.1 it was dropped, so as
     # a workaround we need to manually specify it here.
     "ipython_genutils>=0.2.0",
-    "qtconsole==4.7.7",
+    "qtconsole>=4.3.1",
     #
     # adafruit-board-toolkit is used to find serial ports and help identify
     # CircuitPython boards in the CircuitPython mode.
     #"adafruit-board-toolkit~=1.1",
-    "pyserial~=3.5",
+    "pyserial~=3.5b0",
     "nudatus>=0.0.3",
     # `flake8` is actually a testing/packaging dependency that, among other
     # packages, brings in `pycodestyle` and `pyflakes` which are runtime
@@ -61,15 +58,14 @@ install_requires = [
     # though. Regarding these packages' versions, please refer to:
     # http://flake8.pycqa.org/en/latest/faq.html#why-does-flake8-use-ranges-for-its-dependencies
     "flake8 >= 3.8.3",
-    # Clamp click max version to workaround incompatibility with black<22.1.0
-    "click<=8.0.4",
-    "black>=19.10b0,<22.1.0;python_version>'3.5'",
-    "platformdirs>=2.0.0,<3.0.0",
-    "semver>=2.8.0",
-    # virtualenv vendors pip, we need at least pip v19.3 to install some
-    # rust based dependencies. virtualenv >=v20 is required for the --symlinks
-    # flag needed by AppImage, and it packs pip v20.0.2.
-    #"virtualenv>=20.0.0",
+    "click",
+    "black>=22.1.0;python_version>'3.5'",
+    "platformdirs>=2.0.0",
+    "semver>=2.0.1",
+    #
+    # Needed for creating the runtime virtual environment
+    #
+    #"virtualenv>=16.7.6",
     #
     # Needed for packaging
     #
@@ -140,7 +136,7 @@ setup(
         "mu.wheels",
         "adafruit_board_toolkit",
     ],
-    python_requires=">=3.5,<3.9",
+    python_requires=">=3.5",
     install_requires=install_requires,
     extras_require=extras_require,
     package_data={"mu.wheels": ["*.whl", "*.zip"]},

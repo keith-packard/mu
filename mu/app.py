@@ -144,7 +144,8 @@ class StartupWorker(QObject):
         called from here.
         """
         try:
-            venv.ensure_and_create(self.display_text)
+            if venv:
+                venv.ensure_and_create(self.display_text)
             self.finished.emit()  # Always called last.
         except Exception as ex:
             # Catch all exceptions just in case.

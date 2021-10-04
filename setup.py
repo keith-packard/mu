@@ -119,6 +119,7 @@ setup(
         "mu.interface",
         "mu.modes.api",
         "mu.wheels",
+        "adafruit_board_toolkit",
     ],
     python_requires=">=3.5,<3.9",
     install_requires=install_requires,

@@ -937,4 +937,5 @@ class VirtualEnvironment(object):
 # Create a singleton virtual environment to be used throughout
 # the application
 #
-venv = VirtualEnvironment()
+# venv = VirtualEnvironment()
+venv = None

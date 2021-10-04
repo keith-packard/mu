@@ -69,6 +69,12 @@ install_requires = [
     "wheel",
 ]
 
+exclude = ("PyQt5", "QScintilla", "qtconsole", "PyQtChart")
+install_requires = [
+    requirement
+    for requirement in install_requires
+    if not requirement.startswith(exclude)
+]
 
 extras_require = {
     "tests": [

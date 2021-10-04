@@ -97,6 +97,8 @@ html_theme_options = {
     "logo_text_align": "center",
     "github_user": "mu-editor",
     "github_repo": "mu",
+    "github_banner": "false",
+    "github_button": "false",
 }
 
 html_sidebars = {"**": ["about.html", "navigation.html", "searchbox.html"]}

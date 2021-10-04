@@ -25,10 +25,8 @@ from mu.resources import load_stylesheet, load_font_data
 # The default font size.
 DEFAULT_FONT_SIZE = 14
 # All editor windows use the same font
-FONT_NAME = "Source Code Pro"
+FONT_NAME = "monospace"
 
-FONT_FILENAME_PATTERN = "SourceCodePro-{variant}.otf"
-FONT_VARIANTS = ("Bold", "BoldIt", "It", "Regular", "Semibold", "SemiboldIt")
 # Load the three themes from resources/css/[night|day|contrast].css
 # NIGHT_STYLE is a dark theme.
 NIGHT_STYLE = load_stylesheet("night.css")
@@ -66,10 +64,6 @@ class Font:
         """
         if cls._DATABASE is None:
             cls._DATABASE = QFontDatabase()
-            for variant in FONT_VARIANTS:
-                filename = FONT_FILENAME_PATTERN.format(variant=variant)
-                font_data = load_font_data(filename)
-                cls._DATABASE.addApplicationFontFromData(font_data)
         return cls._DATABASE
 
     def load(self, size=DEFAULT_FONT_SIZE):

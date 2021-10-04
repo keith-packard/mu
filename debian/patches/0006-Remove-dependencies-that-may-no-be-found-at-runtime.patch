@@ -1,0 +1,27 @@
+From: Keith Packard <keithp@keithp.com>
+Date: Mon, 4 Oct 2021 09:33:58 -0700
+Subject: Remove dependencies that may no be found at runtime
+
+Some distributions are not found by pkg_resources when load_entry_point is
+called at startup
+---
+ setup.py | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/setup.py b/setup.py
+index e61d906..a4690d5 100644
+--- a/setup.py
++++ b/setup.py
+@@ -69,6 +69,12 @@ install_requires = [
+     "wheel",
+ ]
+ 
++exclude = ("PyQt5", "QScintilla", "qtconsole", "PyQtChart")
++install_requires = [
++    requirement
++    for requirement in install_requires
++    if not requirement.startswith(exclude)
++]
+ 
+ extras_require = {
+     "tests": [

@@ -1,0 +1,53 @@
+From: Keith Packard <keithp@keithp.com>
+Date: Mon, 4 Oct 2021 10:09:49 -0700
+Subject: adjust 'black' code to support versions 18 and 19
+
+Version 18 of 'black' has a slightly different API; check which
+version we've managed to load and adapt on the fly
+---
+ mu/logic.py | 27 +++++++++++++++++++++------
+ 1 file changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/mu/logic.py b/mu/logic.py
+index 87c039c..96775d8 100644
+--- a/mu/logic.py
++++ b/mu/logic.py
+@@ -1788,17 +1788,32 @@ class Editor(QObject):
+         # Only works on Python, so abort.
+         if tab.path and not self.has_python_extension(tab.path):
+             return
+-        from black import format_str, FileMode, TargetVersion
++        from black import format_str, FileMode
+ 
+         try:
+             source_code = tab.text()
+             logger.info("Tidy code.")
+             logger.info(source_code)
+-            filemode = FileMode(
+-                target_versions={TargetVersion.PY36},
+-                line_length=MAX_LINE_LENGTH,
+-            )
+-            tidy_code = format_str(source_code, mode=filemode)
++            try:
++                logger.info('using old style filemode')
++                filemode = FileMode(FileMode.PYTHON36)
++            except AttributeError:
++                logger.info('using new style filemode')
++                from black import TargetVersion
++                filemode = FileMode(
++                    target_versions={TargetVersion.PY36},
++                    line_length=MAX_LINE_LENGTH,
++                )
++            try:
++                logger.info('using old style format_str')
++                tidy_code = format_str(
++                    source_code, mode=filemode, line_length=88
++                )
++            except TypeError:
++                logger.info('using new style format_str')
++                tidy_code = format_str(source_code, mode=filemode)
++                
++
+             # The following bypasses tab.setText which resets the undo history.
+             # Doing it this way means the user can use CTRL-Z to undo the
+             # reformatting from black.

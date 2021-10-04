@@ -1,0 +1,2272 @@
+From: Keith Packard <keithp@keithp.com>
+Date: Tue, 30 Jul 2019 16:46:05 -0700
+Subject: Add snek mode
+
+Snek is a small Python subset which runs on a variety of embedded
+controllers. It currently supports the ATmega328p, ATmega32U4, SAMD21G
+and SiFive FE310-G000 processors with ports to a range of boards that
+include those processors.
+
+Signed-off-by: Keith Packard <keithp@keithp.com>
+
+---
+
+v2:
+	Fix snek 'put' tests
+
+	This test was attempting to open a real device; if that failed,
+	the test would fail. Fixed to bypass the actual device open while
+	still testing the function behavior.
+
+	Close serial port on quit
+
+	Make sure we clean up any lock files or other serial state
+	when the program terminates with an active serial connection.
+
+	Make sure snek repl is running before trying 'get' operation
+
+	This makes sure the serial link is ready to go.
+
+	Add more snek usb IDs
+
+v3:
+	Add USB ID for SiFive HiFive1 revb board
+
+	Leave 'get' text pane untitled and unmodified
+
+		Leaving the pane untitled means the user will be
+		prompted for a name when saving, instead of
+		overwriting some existing 'snek.py' file.
+
+		Resetting the buffer to unmodified reflects the fact
+		that the code is saved on the target Snek device.
+
+	Warn if 'get' target pane is modified. This avoids
+	smashing modified code.
+
+v4:
+	Add USB ID for Arduino SA Nano 33 IoT board
+
+v5:
+	Add USB ID for Duemilanove
+	Add USB ID for Arduino Mega 2560
+	Enable SW flow control on Snek boards
+
+v6:
+	Allow serial ports to be opened at different baud rates
+
+		This adds an optional baud rate parameter to
+		open_serial_link and uses that instead of always using
+		115200.  This handles the Arduino Mega 2560 board running
+		snek at 38400 baud.
+
+v7:
+	Ensure 'put' snek script ends with newline. This avoids
+	parse errors when loading the script on the target
+
+v8:
+	Reformat with black
+
+v9:
+	Wait for input from duemilanove devices that
+	get rebooted when the serial connection starts.
+
+v10:
+	Rebase to current master, adapt to new REPLConnection class
+
+v11:
+	Handle empty text for 'put' operation. Thanks to @devdanzin
+	for catching this bug!
+
+v12:
+	Rebase to current development version, adapt to Snek version
+	1.6 flow control, which uses ENQ/ACK
+
+v13:
+	Adapt to snek version 1.7 which supports many more boards.
+
+Signed-off-by: Keith Packard <keithp@keithp.com>
+---
+ AUTHORS.rst                      |   1 +
+ mu/app.py                        |   2 +
+ mu/interface/main.py             |  11 +
+ mu/interface/panes.py            | 162 ++++++++++++
+ mu/modes/__init__.py             |   2 +
+ mu/modes/api/__init__.py         |   2 +
+ mu/modes/api/snek.py             | 154 ++++++++++++
+ mu/modes/snek.py                 | 527 +++++++++++++++++++++++++++++++++++++++
+ mu/resources/images/getflash.svg | 121 +++++++++
+ mu/resources/images/snek.svg     | 184 ++++++++++++++
+ tests/interface/test_main.py     |  43 ++++
+ tests/interface/test_panes.py    | 449 +++++++++++++++++++++++++++++++++
+ tests/modes/test_snek.py         | 359 ++++++++++++++++++++++++++
+ 13 files changed, 2017 insertions(+)
+ create mode 100644 mu/modes/api/snek.py
+ create mode 100644 mu/modes/snek.py
+ create mode 100644 mu/resources/images/getflash.svg
+ create mode 100644 mu/resources/images/snek.svg
+ create mode 100644 tests/modes/test_snek.py
+
+diff --git a/AUTHORS.rst b/AUTHORS.rst
+index 3e7f495..943873b 100644
+--- a/AUTHORS.rst
++++ b/AUTHORS.rst
+@@ -18,6 +18,7 @@ These include (but are not limited to):
+ * Zander Brown
+ * Alistair Broomhead (alistair.broomhead@gmail.com)
+ * Frank Morton (fmorton@mac.com)
++* Keith Packard (keithp@keithp.com)
+ 
+ We welcome contributions from anyone! Please see :doc:`contributing` for more
+ information.
+diff --git a/mu/app.py b/mu/app.py
+index af3b5d2..979dff4 100644
+--- a/mu/app.py
++++ b/mu/app.py
+@@ -56,6 +56,7 @@ from .modes import (
+     PyboardMode,
+     LegoMode,
+     PicoMode,
++    SnekMode,
+ )
+ from .interface.themes import NIGHT_STYLE, DAY_STYLE, CONTRAST_STYLE
+ from . import settings
+@@ -242,6 +243,7 @@ def setup_modes(editor, view):
+     """
+     return {
+         "python": PythonMode(editor, view),
++        "snek": SnekMode(editor, view),
+         "circuitpython": CircuitPythonMode(editor, view),
+         "microbit": MicrobitMode(editor, view),
+         "esp": ESPMode(editor, view),
+diff --git a/mu/interface/main.py b/mu/interface/main.py
+index ab3436b..b06b32d 100644
+--- a/mu/interface/main.py
++++ b/mu/interface/main.py
+@@ -61,6 +61,7 @@ from mu.interface.panes import (
+     MicroPythonREPLPane,
+     FileSystemPane,
+     PlotterPane,
++    SnekREPLPane,
+ )
+ from mu.interface.editor import EditorPane
+ from mu.interface.widgets import DeviceSelector
+@@ -641,6 +642,16 @@ class Window(QMainWindow):
+         connection.data_received.connect(repl_pane.process_tty_data)
+         self.add_repl(repl_pane, name)
+ 
++    def add_snek_repl(
++        self, name, connection, force_interrupt=True, wait_input=False
++    ):
++        """
++        Adds a Snek based REPL pane to the application.
++        """
++        repl_pane = SnekREPLPane(connection)
++        connection.data_received.connect(repl_pane.process_bytes)
++        self.add_repl(repl_pane, name)
++
+     def add_micropython_plotter(self, name, connection, data_flood_handler):
+         """
+         Adds a plotter that reads data from a serial connection.
+diff --git a/mu/interface/panes.py b/mu/interface/panes.py
+index 1f33eb5..f818619 100644
+--- a/mu/interface/panes.py
++++ b/mu/interface/panes.py
+@@ -475,6 +475,168 @@ class MicroPythonREPLPane(QTextEdit):
+         self.set_font_size(PANE_ZOOM_SIZES[size])
+ 
+ 
++class SnekREPLPane(MicroPythonREPLPane):
++    """
++    REPL = Read, Evaluate, Print, Loop.
++
++    This widget represents a REPL client connected to a device running
++    Snek.
++
++    The device MUST be flashed with Snek for this to work.
++    """
++
++    def __init__(self, connection, theme="day", parent=None):
++        super().__init__(connection, theme, parent)
++        self.getting_text = False
++        self.text = b""
++        self.text_recv = None
++
++    def keyPressEvent(self, data):
++        """
++        Called when the user types something in the REPL.
++
++        Correctly encodes it and sends it to the connected device.
++        """
++        tc = self.textCursor()
++        key = data.key()
++        mod = data.modifiers()
++        if not mod:
++            mod = 0
++        ctrl_only = mod == Qt.ControlModifier
++        meta_only = mod == Qt.MetaModifier
++        ctrl_shift_only = mod == Qt.ControlModifier | Qt.ShiftModifier
++        shift_down = mod & Qt.ShiftModifier
++        on_osx = platform.system() == "Darwin"
++
++        if key == Qt.Key_Return:
++            # Move cursor to the end of document before sending carriage return
++            tc.movePosition(QTextCursor.End, mode=QTextCursor.MoveAnchor)
++            self.device_cursor_position = tc.position()
++            self.send(VT100_RETURN)
++        elif key == Qt.Key_Backspace:
++            if not self.delete_selection():
++                self.send(VT100_BACKSPACE)
++        elif key == Qt.Key_Delete:
++            if not self.delete_selection():
++                self.send(VT100_DELETE)
++        elif key == Qt.Key_Right:
++            if shift_down:
++                # Text selection - pass down
++                super().keyPressEvent(data)
++            elif tc.hasSelection():
++                self.move_cursor_to(tc.selectionEnd())
++        elif key == Qt.Key_Left:
++            if shift_down:
++                # Text selection - pass down
++                super().keyPressEvent(data)
++            elif tc.hasSelection():
++                self.move_cursor_to(tc.selectionStart())
++        elif (on_osx and meta_only) or (not on_osx and ctrl_only):
++            # Handle the Control key. On OSX/macOS/Darwin (python calls this
++            # platform Darwin), this is handled by Qt.MetaModifier. Other
++            # platforms (Linux, Windows) call this Qt.ControlModifier. Go
++            # figure. See http://doc.qt.io/qt-5/qt.html#KeyboardModifier-enum
++            if Qt.Key_A <= key <= Qt.Key_Z:
++                # The microbit treats an input of \x01 as Ctrl+A, etc.
++                self.send(bytes([1 + key - Qt.Key_A]))
++        elif ctrl_shift_only or (on_osx and ctrl_only):
++            # Command-key on Mac, Ctrl-Shift on Win/Lin
++            if key == Qt.Key_C:
++                self.copy()
++            elif key == Qt.Key_V:
++                self.delete_selection()
++                self.paste()
++        else:
++            self.delete_selection()
++            self.send(bytes(data.text(), "utf8"))
++
++    def insertFromMimeData(self, source):
++        """
++        Insert mime data by sending it to the REPL
++        """
++        if source and source.text():
++            text = source.text().replace("\r\n", "\n").replace("\r", "\n")
++            self.connection.write(bytes(text, "utf8"))
++
++    def set_devicecursor_to_qtcursor(self):
++        # Move cursor to the end of document
++        tc = self.textCursor()
++        tc.movePosition(QTextCursor.End, mode=QTextCursor.MoveAnchor)
++        self.device_cursor_position = tc.position()
++
++    def send_commands(self, commands):
++        """
++        Send commands to the REPL via raw mode.
++        """
++        raw_on = [  # Sequence of commands to get into raw mode.
++            b"\x0e\x03",
++        ]
++        commands = [c.encode("utf-8") for c in commands]
++        raw_off = [
++            b"\x0f",
++        ]
++        command_sequence = raw_on + commands + raw_off
++        logger.info(command_sequence)
++        self.execute(command_sequence)
++
++    def execute(self, commands):
++        """
++        Execute a series of commands over a period of time (scheduling
++        remaining commands to be run in the next iteration of the event loop).
++        """
++        if commands:
++            command = commands[0]
++            logger.info("Sending command {}".format(command))
++            self.connection.write(command)
++            remainder = commands[1:]
++            remaining_task = lambda commands=remainder: self.execute(commands)
++            QTimer.singleShot(1000, remaining_task)
++
++    def process_bytes(self, data):
++        """
++        Given some incoming bytes of data, work out how to handle / display
++        them in the REPL widget.
++        """
++        tc = self.textCursor()
++        # The text cursor must be on the last line of the document. If it isn't
++        # then move it there.
++        while tc.movePosition(QTextCursor.Down):
++            pass
++        i = 0
++        while i < len(data):
++            if data[i] == 2:  # ctrl-b
++                self.getting_text = True
++                self.text = b""
++            elif data[i] == 3:  # ctrl-c
++                if self.text_recv:
++                    s = self.text.decode("utf-8", "replace")
++                    self.text_recv.recv_text(s)
++                    self.text = b""
++                self.getting_text = False
++            elif data[i] == 17 or data[i] == 19:  # XON/XOFF
++                pass
++            else:
++                if self.getting_text:
++                    if data[i] != 13:
++                        self.text += bytes([data[i]])
++                else:
++                    if data[i] == 8:  # \b
++                        tc.movePosition(QTextCursor.Left)
++                        self.setTextCursor(tc)
++                    elif data[i] == 13:  # \r
++                        pass
++                    elif data[i] == 10:  # \n
++                        tc.movePosition(QTextCursor.End)
++                        self.setTextCursor(tc)
++                        self.insertPlainText(chr(data[i]))
++                    else:
++                        tc.deleteChar()
++                        self.setTextCursor(tc)
++                        self.insertPlainText(chr(data[i]))
++            i += 1
++        self.ensureCursorVisible()
++
++
+ class MuFileList(QListWidget):
+     """
+     Contains shared methods for the two types of file listing used in Mu.
+diff --git a/mu/modes/__init__.py b/mu/modes/__init__.py
+index 805d5d0..9cf9559 100644
+--- a/mu/modes/__init__.py
++++ b/mu/modes/__init__.py
+@@ -3,6 +3,7 @@ from .circuitpython import CircuitPythonMode
+ from .microbit import MicrobitMode
+ from .debugger import DebugMode
+ from .pygamezero import PyGameZeroMode
++from .snek import SnekMode
+ from .esp import ESPMode
+ from .web import WebMode
+ from .pyboard import PyboardMode
+@@ -15,6 +16,7 @@ __all__ = [
+     "MicrobitMode",
+     "DebugMode",
+     "PyGameZeroMode",
++    "SnekMode",
+     "ESPMode",
+     "WebMode",
+     "PyboardMode",
+diff --git a/mu/modes/api/__init__.py b/mu/modes/api/__init__.py
+index 1f34d64..2cf0fe3 100644
+--- a/mu/modes/api/__init__.py
++++ b/mu/modes/api/__init__.py
+@@ -4,6 +4,7 @@ from .python3 import PYTHON3_APIS
+ from .pi import PI_APIS
+ from .shared import SHARED_APIS
+ from .pygamezero import PYGAMEZERO_APIS
++from .snek import SNEK_APIS
+ from .esp import ESP_APIS
+ from .flask import FLASK_APIS
+ from .pyboard import PYBOARD_APIS
+@@ -16,6 +17,7 @@ __all__ = [
+     "PI_APIS",
+     "SHARED_APIS",
+     "PYGAMEZERO_APIS",
++    "SNEK_APIS",
+     "ESP_APIS",
+     "FLASK_APIS",
+     "PYBOARD_APIS",
+diff --git a/mu/modes/api/snek.py b/mu/modes/api/snek.py
+new file mode 100644
+index 0000000..37fe9e6
+--- /dev/null
++++ b/mu/modes/api/snek.py
+@@ -0,0 +1,154 @@
++"""
++Contains definitions for the Snek APIs so they can be
++used in the editor for autocomplete and call tips.
++
++Copyright © 2019 Keith Packard
++
++This program is free software: you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation, either version 3 of the License, or
++(at your option) any later version.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with this program.  If not, see <http://www.gnu.org/licenses/>.
++"""
++
++
++SNEK_APIS = [
++    # built-in functions
++    _(
++        "chr(i) \nReturn a string representing a character whose Unicode code point is the integer 'i'."
++    ),
++    _(
++        "ord(c) \nGiven a string representing one Unicode character, return an integer representing the Unicode code point of that character."
++    ),
++    _("len(object) \nReturn the length (the number of items) in an 'object'."),
++    _(
++        "print(*objects, end='\\n') \nPrint objects followed by 'end'.\nAll non-keyword arguments are converted to strings."
++    ),
++    _("sys.stdout.flush() \nFlush pending output to the console."),
++    _(
++        "range(start, stop, step) \nReturn an immutable sequence containing items between 'start' and 'stop' with 'step' difference between them."
++    ),
++    # math
++    # Number-theoretic and representation functions
++    _(
++        "math.ceil(x) \nReturn the ceiling of x, the smallest integer greater than or equal to x."
++    ),
++    _(
++        "math.copysign(x,y) \nReturn a number with the magnitude (absolute value) of x but the sign of y."
++    ),
++    _("math.fabs(x) \nReturn the absolute value of x."),
++    _("math.factorial(x) \nReturn the factorial of x."),
++    _(
++        "math.floor(x) \nReturn the floor of x, the largest integer less than or equal to x."
++    ),
++    _("math.fmod(x,y) \nReturn the modulus of x and y: x - trunc(x/y) * y."),
++    _(
++        "math.frexp(x) \nReturns the normalized fraction and exponent in a tuple (frac, exp). 0.5 ≤ abs(frac) < 1,\n"
++        "and x = frac * pow(2,exp)."
++    ),
++    _(
++        "math.fsum(l) \nReturns the sum of the numbers in l, which must be a list or tuple."
++    ),
++    _("math.gcd(x,y) \nReturn the greatest common divisor of x and y."),
++    _(
++        "math.isclose(x,y,rel_val=1e-6,abs_val=0.0) \nReturns a boolean indicating whether x and y are 'close'\n"
++        "together. This is defined as abs(x-y) ≤ max(rel_tol * max(abs(a), abs(b)), abs_tol)."
++    ),
++    _("math.isfinite(x) \nReturns True if x is finite else False."),
++    _("math.isinf \nReturns True if x is infinite else False."),
++    _("math.isnan \nReturns True if x is not a number else False."),
++    _("math.ldexp(x,y) \nReturns x * pow(2,y)."),
++    _("math.modf(x) \nReturns (x - trunc(x), trunc(x))."),
++    _(
++        "math.remainder(x,y) \nReturns the remainder of x and y: x - round(x/y) * y."
++    ),
++    _(
++        "math.trunc \nReturns the truncation of x, the integer closest to x which is no further from zero than x."
++    ),
++    _(
++        "round(x) \nReturns the integer nearest x, with values midway between two integers rounding away from zero."
++    ),
++    # Power and logarithmic functions
++    _("math.exp(x) \nReturns pow(e,x)."),
++    _("math.expm1(x) \nReturns exp(x)-1."),
++    _("math.exp2(x) \nReturns pow(2,x)."),
++    _("math.log(x) \nReturns the natural logarithm of x."),
++    _("math.log1p(x) \nReturns log(x+1)."),
++    _("math.log2(x) \nReturns the log base 2 of x."),
++    _("math.log10(x) \nReturns the log base 10 of x."),
++    _("math.pow(x,y) \nReturns x raised to the y^th^ power."),
++    _("math.sqrt(x) \nReturn the square root of x."),
++    # Trigonometric functions
++    _(
++        "math.acos(x) \nReturns the arc cosine of x in the range of 0 ≤ acos(x) ≤ π."
++    ),
++    _(
++        "math.asin(x) \nReturns the arc sine of x in the range of -π/2 ≤ asin(x) ≤ π/2."
++    ),
++    _(
++        "math.atan(x) \nReturns the arc tangent of x in the range of -π/2 ≤ atan(x) ≤ π/2."
++    ),
++    _(
++        "math.atan2(y,x) \nReturns the arc tangent of y/x in the range of -π ≤ atan2(y,x) ≤ π."
++    ),
++    _("math.cos(x) \nReturns the cosine of x."),
++    _("math.hypot(x,y) \nReturns sqrt(x*x + y*y)."),
++    _("math.sin(x) \nReturns the sine of x."),
++    _("math.tan(x) \nReturns the tangent of x."),
++    # Angular conversion
++    _("math.degrees(x) \nReturns x * 180/π."),
++    _("math.radians(x) \nReturns x * π/180."),
++    # Hyperbolic functions
++    _("math.acosh(x) \nReturns the inverse hyperbolic cosine of x."),
++    _("math.asinh(x) \nReturns the inverse hyperbolic sine of x."),
++    _("math.atanh(x) \nReturns the inverse hyperbolic tangent of x."),
++    _(
++        "math.cosh(x) \nReturns the hyperbolic cosine of x: (exp(x) + exp(-x)) / 2."
++    ),
++    _(
++        "math.sinh(x) \nReturns the hyperbolic sine of x: (exp(x) - exp(-x)) / 2."
++    ),
++    _(
++        "math.tanh(x) \nReturns the hyperbolic tangent of x: sinh(x) / cosh(x)."
++    ),
++    # Special functions
++    _("math.erf(x) \nReturns the error function at x."),
++    _(
++        "math.erfc(x) \nReturns the complement of the error function at x. This is 1 - erf(x)."
++    ),
++    _("math.gamma(x) \nReturns the gamma function at x."),
++    _("math.lgamma(x) \nReturns log(gamma(x))."),
++    # GPIO
++    _(
++        "talkto(p) \nSets the current output pins. If p is a number, set both power and dir.\n"
++        "If p is a list or tuple, set power to p[0] and dir to p[1]."
++    ),
++    _("setpower(p) \nSets output level for power pin to p."),
++    _("setleft() \nSets dir pin to 1."),
++    _("setright() \nSets dir pin to 0."),
++    _("on() \nTurn power pin on."),
++    _("off() \nTurn power pin off."),
++    _("onfor(s) \nTurn power pin on for s seconds, then turn power pin off."),
++    _("read(p) \nReturn current value on pin p."),
++    _("pullnone(p) \nDisables pull-up/pull-down mode on pin p."),
++    _("pullup(p) \nEnable pull-up on pin p."),
++    _("pulldown(p) \nEnable pull-down on pin p."),
++    _("stopall() \nTurn off all pins."),
++    _("neopixel(pixels) \nSend new pixel data to neopixels on power pin."),
++    # Common
++    _("time.sleep(s) \nDelay execution for s seconds.\n"),
++    _("time.monotonic() \nReturns time in seconds since some reference time"),
++    _(
++        "random.seed(s) \nRe-initialize random number generator using s as the seed."
++    ),
++    _(
++        "random.randrange(m) \nReturns a random integer between 0 and m-1 inclusive."
++    ),
++]
+diff --git a/mu/modes/snek.py b/mu/modes/snek.py
+new file mode 100644
+index 0000000..9b2c3c7
+--- /dev/null
++++ b/mu/modes/snek.py
+@@ -0,0 +1,527 @@
++"""
++A mode for working with Snek boards. https://keithp.com/snek
++
++Copyright © 2019 Keith Packard
++
++This program is free software: you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation, either version 3 of the License, or
++(at your option) any later version.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with this program.  If not, see <http://www.gnu.org/licenses/>.
++"""
++import logging
++from .base import MicroPythonMode, REPLConnection
++from .api import SNEK_APIS
++from mu.interface.panes import CHARTS
++from PyQt5.QtWidgets import QMessageBox
++from PyQt5.QtCore import QTimer
++
++logger = logging.getLogger(__name__)
++
++
++class SnekREPLConnection(REPLConnection):
++    """
++    Handle Snek serial connection, including flow control
++    """
++
++    def __init__(
++        self,
++        port,
++        baudrate=115200,
++        flowcontrol=False,
++        chunk=16,
++        wait_for_data=False,
++    ):
++        super().__init__(port, baudrate)
++        self.flowcontrol = flowcontrol
++        self.sent = 0
++        self.chunk = chunk
++        self.data = b""
++        self.waiting = False
++        self.ready = True
++        self.pending = b""
++        self.wait_for_data = wait_for_data
++
++    def set_ready(self):
++        """
++        Device is ready, send any pending output
++        """
++        self.ready = True
++        self.write(self.pending)
++        self.pending = b""
++
++    def open(self):
++        super().open()
++        self.ready = True
++
++        # If the device will reset on open, wait for it to send
++        # something before talking to it. Don't wait more than two
++        # seconds, in case it doesn't actually reset
++
++        if self.wait_for_data:
++            self.ready = False
++            ready_func = lambda: self.set_ready()
++            QTimer.singleShot(2000, ready_func)
++
++    # Flow control: every 'chunk' bytes, send an ENQ character and
++    # block until the matching ACK is received
++
++    def send_enq(self):
++        super().write(b"\x05")
++        self.waiting = True
++
++    # Called when an ACK is received. Restart transmission.
++
++    def recv_ack(self):
++        self.sent = 0
++        self.waiting = False
++        self.send_data()
++
++    def _on_serial_read(self):
++        data = bytes(self.serial.readAll())
++
++        # when we receive and ACK, restart transmission
++        if b"\x06" in data:
++            self.recv_ack()
++            data = data.replace(b"\x06", b"")
++
++        self.data_received.emit(data)
++
++        # if we were waiting for reset, we know the device is now
++        # ready, so start transmitting
++        if not self.ready and b"W" in data:
++            self.ready = True
++            ready_func = lambda: self.set_ready()
++            # give it 200ms to finish starting up
++            QTimer.singleShot(200, ready_func)
++
++    def send_data(self):
++        while not self.waiting and self.data:
++            amt = self.chunk - self.sent
++            if amt > len(self.data):
++                amt = len(self.data)
++            part = self.data[:amt]
++            self.data = self.data[amt:]
++            super().write(part)
++            self.sent += amt
++            if self.sent >= self.chunk:
++                self.send_enq()
++
++    # Overload write method to handle flow control when needed
++
++    def write(self, data):
++        if not self.ready:
++            self.pending += data
++            return
++        if self.flowcontrol:
++            if b"\x03" in data:
++                self.data = data
++                self.sent = 0
++                self.waiting = False
++            else:
++                self.data += data
++            self.send_data()
++        else:
++            super().write(data)
++
++    def send_interrupt(self):
++        # Send a Control-O / exit raw mode.
++        # Send a Control-C / keyboard interrupt.
++        self.write(b"\x0f\x03")
++
++
++class SnekMode(MicroPythonMode):
++    """
++    Represents the functionality required by the Snek mode.
++    """
++
++    name = _("Snek")
++    short_name = "snek"
++    description = _("Write code for boards running Snek.")
++    icon = "snek"
++    save_timeout = 0  #: No auto-save on CP boards. Will restart.
++    connected = True  #: is the board connected.
++    force_interrupt = True  #: keyboard interrupt on serial connection.
++    valid_boards = [
++        # VID  , PID   , manufact., device name
++        (0xFFFE, None, None, "Altus Metrum"),
++        (0x239A, 0x8022, None, "Adafruit Feather M0 Express"),
++        (0x239A, 0x8011, None, "Adafruit ItsyBitsy M0"),
++        (0x239A, 0x8013, None, "Adafruit Metro M0 Express"),
++        (0x239A, 0x8018, None, "Circuit Playground Express M0"),
++        (0x239A, 0x804D, None, "Snekboard"),
++        (0x1366, 0x1051, None, "SiFive Hifive1 Revb"),
++        (0x2341, 0x8057, None, "Arduino SA Nano 33 IoT"),
++        (0x2341, 0x0010, None, "Arduino Mega 2560"),
++        (0x2341, 0x0058, None, "Arduino Nano Every"),
++        (0x2341, 0x0043, None, "Arduino Uno"),
++        (0x0403, 0x6001, None, "Arduino Duemilanove with FT232"),
++        (0x03EB, 0x204B, None, "Arduino Mega with LUFA"),
++        (0x10C4, 0xEA60, None, "Arduino clone with CP210x"),
++        (0x1A86, 0x7523, None, "Pandauino Narrow 1284"),
++        (0x2886, 0x002E, None, "Seeed Xiao"),
++    ]
++    # These boards don't need flow control
++    usb_boards = [
++        (0xFFFE, None),
++        (0x239A, 0x8022),
++        (0x239A, 0x8011),
++        (0x239A, 0x8013),
++        (0x239A, 0x8018),
++        (0x239A, 0x804D),
++    ]
++    # These boards get reset when we connect, wait before talking
++    reset_boards = [
++        (0x0403, 0x6001),  # Duemilanove with FT232
++        (0x03EB, 0x204B),  # Arduino Mega with LUFA
++        (0x10C4, 0xEA60),  # Seeed Grove with CP210x
++        (0x2341, 0x0010),  # Arduino Mega 2560
++        (0x2341, 0x0058),  # Arduino Nano Every
++        (0x2341, 0x0043),  # Arduino Uno
++        (0x1A86, 0x7523),  # Pandauino Narrow 1284
++    ]
++    # Modules built into Snek which mustn't be used as file names
++    # for source code.
++    module_names = {"time", "random", "math"}
++    builtins = (
++        "A0",
++        "A1",
++        "A10",
++        "A11",
++        "A12",
++        "A13",
++        "A14",
++        "A15",
++        "A2",
++        "A3",
++        "A4",
++        "A5",
++        "A6",
++        "A7",
++        "A8",
++        "A9",
++        "BUTTONA",
++        "BUTTONB",
++        "CAP1",
++        "CAP2",
++        "CAP3",
++        "CAP4",
++        "D0",
++        "D1",
++        "D10",
++        "D11",
++        "D12",
++        "D13",
++        "D14",
++        "D15",
++        "D16",
++        "D17",
++        "D18",
++        "D19",
++        "D2",
++        "D20",
++        "D21",
++        "D22",
++        "D23",
++        "D24",
++        "D25",
++        "D26",
++        "D27",
++        "D28",
++        "D29",
++        "D3",
++        "D30",
++        "D31",
++        "D32",
++        "D33",
++        "D34",
++        "D35",
++        "D36",
++        "D37",
++        "D38",
++        "D39",
++        "D4",
++        "D40",
++        "D41",
++        "D42",
++        "D43",
++        "D44",
++        "D45",
++        "D46",
++        "D47",
++        "D48",
++        "D49",
++        "D5",
++        "D50",
++        "D51",
++        "D52",
++        "D53",
++        "D6",
++        "D7",
++        "D8",
++        "D9",
++        "DRIVE1",
++        "DRIVE2",
++        "DRIVE3",
++        "DRIVE4",
++        "FLASHCS",
++        "FLASHMISO",
++        "FLASHMOSI",
++        "FLASHSCK",
++        "I2SCK",
++        "I2SDO",
++        "LED",
++        "LIGHT",
++        "LISIRQ",
++        "LISSCL",
++        "LISSDA",
++        "M1",
++        "M2",
++        "M3",
++        "M4",
++        "MISO",
++        "MOSI",
++        "MOTOR1",
++        "MOTOR2",
++        "NEOPIXEL",
++        "NEOPIXEL1",
++        "REMOTEIN",
++        "REMOTEOUT",
++        "RX",
++        "SCK",
++        "SCL",
++        "SDA",
++        "SERVO1",
++        "SERVO2",
++        "SERVO3",
++        "SERVO4",
++        "SIGNAL1",
++        "SIGNAL2",
++        "SIGNAL3",
++        "SIGNAL4",
++        "SIGNAL5",
++        "SIGNAL6",
++        "SIGNAL7",
++        "SIGNAL8",
++        "SWITCH",
++        "TEMP",
++        "TX",
++        "abs_tol",
++        "curses",
++        "eeprom",
++        "exit",
++        "math",
++        "neopixel",
++        "off",
++        "on",
++        "onfor",
++        "pulldown",
++        "pullnone",
++        "pullup",
++        "random",
++        "read",
++        "rel_tol",
++        "reset",
++        "round",
++        "setleft",
++        "setpower",
++        "setright",
++        "stdscr",
++        "stopall",
++        "sys",
++        "talkto",
++        "temperature",
++        "time",
++    )
++
++    def stop(self):
++        self.remove_repl()
++
++    def actions(self):
++        """
++        Return an ordered list of actions provided by this module. An action
++        is a name (also used to identify the icon) , description, and handler.
++        """
++        buttons = [
++            {
++                "name": "serial",
++                "display_name": _("Serial"),
++                "description": _("Open a serial connection to your device."),
++                "handler": self.toggle_repl,
++                "shortcut": "CTRL+Shift+U",
++            },
++            {
++                "name": "flash",
++                "display_name": _("Put"),
++                "description": _("Put the current program to the device."),
++                "handler": self.put,
++                "shortcut": "CTRL+Shift+P",
++            },
++            {
++                "name": "getflash",
++                "display_name": _("Get"),
++                "description": _("Get the current program from the device."),
++                "handler": self.get,
++                "shortcut": "CTRL+Shift+G",
++            },
++        ]
++        if CHARTS:
++            buttons.append(
++                {
++                    "name": "plotter",
++                    "display_name": _("Plotter"),
++                    "description": _("Plot incoming REPL data."),
++                    "handler": self.toggle_plotter,
++                    "shortcut": "CTRL+Shift+P",
++                }
++            )
++        return buttons
++
++    def put(self):
++        """
++        Put the current program into the device memory.
++        """
++        logger.info("Downloading code to target device.")
++        # Grab the Python script.
++        tab = self.view.current_tab
++        if tab is None:
++            # There is no active text editor.
++            message = _("Cannot run anything without any active editor tabs.")
++            information = _(
++                "Running transfers the content of the current tab"
++                " onto the device. It seems like you don't have "
++                " any tabs open."
++            )
++            self.view.show_message(message, information)
++            return
++        python_script = tab.text()
++        if not python_script or python_script[-1] != "\n":
++            python_script += "\n"
++        if not self.repl:
++            self.toggle_repl(None)
++        command = ("eeprom.write()\n" + python_script + "\x04" + "reset()\n",)
++        if self.repl:
++            self.view.repl_pane.send_commands(command)
++
++    def get_tab(self):
++        for tab in self.view.widgets:
++            if not tab.path:
++                return tab
++        return None
++
++    def recv_text(self, text):
++        target_tab = self.get_tab()
++        if target_tab:
++            target_tab.setText(text)
++            target_tab.setModified(False)
++        else:
++            view = self.view
++            editor = self.editor
++            view.add_tab(None, text, editor.modes[editor.mode].api(), "\n")
++
++    def get(self):
++        """
++        Get the current program from device memory.
++        """
++        target_tab = self.get_tab()
++        if target_tab and target_tab.isModified():
++            msg = _(
++                "There is un-saved work, 'get' will cause you " "to lose it."
++            )
++            window = target_tab.nativeParentWidget()
++            if window.show_confirmation(msg) == QMessageBox.Cancel:
++                return
++
++        command = ("eeprom.show(1)\n",)
++        if not self.repl:
++            self.toggle_repl(None)
++        if self.repl:
++            self.view.repl_pane.text_recv = self
++            self.view.repl_pane.send_commands(command)
++
++    def api(self):
++        """
++        Return a list of API specifications to be used by auto-suggest and call
++        tips.
++        """
++        return SNEK_APIS
++
++    def add_repl(self):
++        """
++        Detect a connected Snek based device and, if found, connect to
++        the REPL and display it to the user.
++        """
++        device = self.editor.current_device
++        if device:
++            baudrate = 115200
++            try:
++                if not self.connection:
++                    flowcontrol = not (
++                        (device.vid, device.pid) in self.usb_boards
++                        or (device.vid, None) in self.usb_boards
++                    )
++
++                    # If the board is going to get rebooted when we open it,
++                    # wait for it to say something before trying to talk to it
++                    wait_for_data = (
++                        device.vid,
++                        device.pid,
++                    ) in self.reset_boards
++
++                    self.connection = SnekREPLConnection(
++                        device.port,
++                        baudrate=baudrate,
++                        flowcontrol=flowcontrol,
++                        wait_for_data=wait_for_data,
++                    )
++
++                    self.connection.open()
++
++                    if self.force_interrupt:
++                        self.connection.send_interrupt()
++
++                self.view.add_snek_repl(self.name, self.connection)
++
++                logger.info("Started REPL on port: {}".format(device.port))
++                self.repl = True
++            except IOError as ex:
++                logger.error(ex)
++                self.repl = False
++                info = _(
++                    "Click on the device's reset button, wait a few"
++                    " seconds and then try again."
++                )
++                self.view.show_message(str(ex), info)
++            except Exception as ex:
++                logger.error(ex)
++        else:
++            message = _("Could not find an attached device.")
++            information = _(
++                "Please make sure the device is plugged into this"
++                " computer.\n\nIt must have a version of"
++                " Snek flashed onto it before the REPL will work.\n\n"
++                "Finally, press the device's reset button and wait a"
++                " few seconds before trying again."
++            )
++            self.view.show_message(message, information)
++
++    def device_changed(self, new_device):
++        """
++        Invoked when the user changes device.
++        """
++        # Reconnect REPL, Plotter and send interrupt
++        if self.repl:
++            self.remove_repl()
++            self.add_repl()
++        if self.plotter:
++            self.remove_plotter()
++            self.add_plotter()
++        if self.connection:
++            self.connection.send_interrupt()
+diff --git a/mu/resources/images/getflash.svg b/mu/resources/images/getflash.svg
+new file mode 100644
+index 0000000..f2b5adb
+--- /dev/null
++++ b/mu/resources/images/getflash.svg
+@@ -0,0 +1,121 @@
++<?xml version="1.0" encoding="UTF-8" standalone="no"?>
++<svg
++   width="59.619438mm"
++   height="59.619438mm"
++   viewBox="0 0 59.619438 59.619438"
++   version="1.1"
++   id="svg8"
++   inkscape:version="1.1.1 (3bf5ae0d25, 2021-09-20)"
++   sodipodi:docname="getflash.svg"
++   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
++   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
++   xmlns="http://www.w3.org/2000/svg"
++   xmlns:svg="http://www.w3.org/2000/svg"
++   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
++   xmlns:cc="http://creativecommons.org/ns#"
++   xmlns:dc="http://purl.org/dc/elements/1.1/">
++  <defs
++     id="defs2" />
++  <sodipodi:namedview
++     id="base"
++     pagecolor="#ffffff"
++     bordercolor="#666666"
++     borderopacity="1.0"
++     inkscape:pageopacity="0.0"
++     inkscape:pageshadow="2"
++     inkscape:zoom="7.1094682"
++     inkscape:cx="77.853924"
++     inkscape:cy="54.364122"
++     inkscape:document-units="mm"
++     inkscape:current-layer="layer1"
++     inkscape:document-rotation="0"
++     showgrid="false"
++     inkscape:snap-page="true"
++     fit-margin-top="0"
++     fit-margin-left="0"
++     fit-margin-right="0"
++     fit-margin-bottom="0"
++     showguides="true"
++     inkscape:guide-bbox="true"
++     inkscape:window-width="3840"
++     inkscape:window-height="2131"
++     inkscape:window-x="0"
++     inkscape:window-y="0"
++     inkscape:window-maximized="1"
++     inkscape:snap-to-guides="true"
++     inkscape:snap-global="true"
++     inkscape:pagecheckerboard="0">
++    <sodipodi:guide
++       position="29.809499,69.619441"
++       orientation="-1,0"
++       id="guide24"
++       inkscape:label=""
++       inkscape:locked="false"
++       inkscape:color="rgb(0,0,255)" />
++    <sodipodi:guide
++       position="-9.9999998,29.809721"
++       orientation="0,1"
++       id="guide26"
++       inkscape:label=""
++       inkscape:locked="false"
++       inkscape:color="rgb(0,0,255)" />
++    <sodipodi:guide
++       position="-19.894461,69.619437"
++       orientation="0,1"
++       id="guide879"
++       inkscape:label=""
++       inkscape:locked="false"
++       inkscape:color="rgb(0,0,255)" />
++  </sodipodi:namedview>
++  <metadata
++     id="metadata5">
++    <rdf:RDF>
++      <cc:Work
++         rdf:about="">
++        <dc:format>image/svg+xml</dc:format>
++        <dc:type
++           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
++        <dc:title />
++      </cc:Work>
++    </rdf:RDF>
++  </metadata>
++  <g
++     inkscape:label="Layer 1"
++     inkscape:groupmode="layer"
++     id="layer1"
++     transform="translate(0,-237.38055)">
++    <circle
++       style="fill:#ffffff;stroke:#ffcc33;stroke-width:4.3585;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
++       id="path853"
++       cx="29.809719"
++       cy="267.19028"
++       r="27.630468" />
++    <g
++       id="g27">
++      <g
++         id="g842">
++        <path
++           id="rect2084"
++           style="fill:none;stroke:#336699;stroke-width:3.25001;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
++           d="m 23.992699,267.16479 h 11.26189 c 3.4625,0 6.25,2.66827 6.25,6.02892 v 0.14886 c 0,3.36064 -2.7875,6.06614 -6.25,6.06614 h -11.26189 c -3.4625,0 -6.25,-2.7055 -6.25,-6.06614 v -0.14886 c 0,-3.36065 2.7875,-6.02892 6.25,-6.02892 z"
++           sodipodi:nodetypes="sssssssss" />
++        <circle
++           style="fill:#336699;fill-opacity:1;stroke:none;stroke-width:3.25001;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
++           id="path2087"
++           cx="23.818008"
++           cy="273.21231"
++           r="1.6" />
++        <circle
++           style="fill:#336699;fill-opacity:1;stroke:none;stroke-width:3.25001;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
++           id="circle2089"
++           cx="35.209641"
++           cy="273.21231"
++           r="1.6" />
++      </g>
++      <path
++         id="rect2105"
++         style="fill:#336699;fill-opacity:1;stroke:none;stroke-width:3.25001;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
++         d="m 28.27941,264.22129 v -6.77737 l -3.7083,3.7083 v -2.82825 l 3.675227,-3.67522 1.414386,-1.41439 1.413867,1.41439 3.675226,3.67522 v 2.82825 l -3.753776,-3.75377 v 6.82284 z" />
++    </g>
++  </g>
++</svg>
+diff --git a/mu/resources/images/snek.svg b/mu/resources/images/snek.svg
+new file mode 100644
+index 0000000..80d43dd
+--- /dev/null
++++ b/mu/resources/images/snek.svg
+@@ -0,0 +1,184 @@
++<?xml version="1.0" encoding="UTF-8" standalone="no"?>
++<svg
++   xmlns:dc="http://purl.org/dc/elements/1.1/"
++   xmlns:cc="http://creativecommons.org/ns#"
++   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
++   xmlns:svg="http://www.w3.org/2000/svg"
++   xmlns="http://www.w3.org/2000/svg"
++   xmlns:xlink="http://www.w3.org/1999/xlink"
++   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
++   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
++   width="320"
++   height="240"
++   version="1.1"
++   id="svg23"
++   sodipodi:docname="snek.svg"
++   inkscape:version="0.92.4 (5da689c313, 2019-01-14)">
++  <metadata
++     id="metadata27">
++    <rdf:RDF>
++      <cc:Work
++         rdf:about="">
++        <dc:format>image/svg+xml</dc:format>
++        <dc:type
++           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
++        <dc:title></dc:title>
++      </cc:Work>
++    </rdf:RDF>
++  </metadata>
++  <sodipodi:namedview
++     pagecolor="#000000"
++     bordercolor="#666666"
++     borderopacity="1"
++     objecttolerance="10"
++     gridtolerance="10"
++     guidetolerance="10"
++     inkscape:pageopacity="0"
++     inkscape:pageshadow="2"
++     inkscape:window-width="2264"
++     inkscape:window-height="1422"
++     id="namedview25"
++     showgrid="false"
++     fit-margin-left="-0.2"
++     fit-margin-top="0"
++     fit-margin-right="0"
++     fit-margin-bottom="0"
++     inkscape:zoom="6.402378"
++     inkscape:cx="78.949438"
++     inkscape:cy="192.4743"
++     inkscape:window-x="177"
++     inkscape:window-y="186"
++     inkscape:window-maximized="0"
++     inkscape:current-layer="svg23"
++     inkscape:pagecheckerboard="true" />
++  <defs
++     id="defs9">
++    <linearGradient
++       id="linearGradient859"
++       inkscape:collect="always">
++      <stop
++         id="stop863"
++         offset="0"
++         style="stop-color:#fffcfc;stop-opacity:1;" />
++      <stop
++         id="stop865"
++         offset="1"
++         style="stop-color:#fffcfc;stop-opacity:0;" />
++    </linearGradient>
++    <inkscape:path-effect
++       effect="spiro"
++       id="path-effect833"
++       is_visible="true" />
++    <filter
++       id="filter5883">
++      <feGaussianBlur
++         id="feGaussianBlur5885"
++         stdDeviation="0.794398" />
++    </filter>
++    <linearGradient
++       id="linearGradient3378">
++      <stop
++         id="stop3380"
++         stop-color="#d4ff2a"
++         offset="0" />
++      <stop
++         id="stop3382"
++         stop-color="#95d030"
++         offset="1" />
++    </linearGradient>
++    <linearGradient
++       id="linearGradient5606"
++       y2="194.1785"
++       xlink:href="#linearGradient3378"
++       x2="164.22122"
++       y1="194.1785"
++       x1="25.290228"
++       gradientTransform="scale(1.2091945,0.82699681)"
++       gradientUnits="userSpaceOnUse" />
++    <linearGradient
++       id="linearGradient3554"
++       y2="448.44028"
++       xlink:href="#linearGradient3378"
++       x2="229.6731"
++       y1="552.78082"
++       x1="78.971382"
++       gradientTransform="scale(1.4458392,0.69163986)"
++       gradientUnits="userSpaceOnUse" />
++    <radialGradient
++       inkscape:collect="always"
++       xlink:href="#linearGradient859"
++       id="radialGradient861"
++       cx="58.045792"
++       cy="49.90126"
++       fx="58.045792"
++       fy="49.90126"
++       r="48.330189"
++       gradientTransform="matrix(1.2472303,0,0,1.119373,-11.773509,-1.5053963)"
++       gradientUnits="userSpaceOnUse" />
++  </defs>
++  <ellipse
++     style="opacity:1;fill:url(#radialGradient861);fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.33280307;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
++     id="path853"
++     cx="60.622959"
++     cy="54.35273"
++     rx="60.278873"
++     ry="54.09951" />
++  <path
++     style="fill:#fffcfc;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
++     inkscape:path-effect="#path-effect833"
++     inkscape:original-d="m 67.610114,27.118104 c 6.713205,-1.089497 8.709332,-0.361032 13.259767,-0.254718 4.550435,0.106314 9.302107,3.237565 12.405346,5.850565 3.103239,2.613 4.240933,4.749872 3.165418,9.442321 -1.075515,4.692449 -6.019053,9.26703 -12.527459,10.822605 -6.508406,1.555575 -15.084437,0.339769 -22.813692,1.538529 -7.729255,1.19876 -13.779737,2.571384 -20.780772,1.862309 -7.001035,-0.709074 -16.525526,-3.458309 -16.200875,-10.424977 0.324651,-6.966668 4.281697,-8.757588 7.214428,-11.552389 2.932731,-2.7948 3.067091,-2.720633 5.006737,-3.356366 1.939646,-0.635733 8.017723,-2.865079 9.918328,-3.259811 1.900604,-0.394732 14.63957,0.42143 21.352774,-0.668068 z"
++     id="path831"
++     d="m 67.610114,27.118104 c 4.422943,-0.17586 8.861694,-0.755028 13.259767,-0.254718 4.64425,0.528314 9.27997,2.374907 12.405346,5.850565 1.147019,1.275573 2.07646,2.756788 2.647963,4.374231 0.571504,1.617443 0.778626,3.372647 0.517455,5.06809 -0.446091,2.89589 -2.244569,5.472968 -4.560521,7.267834 -2.315951,1.794867 -5.118198,2.869311 -7.966938,3.554771 -7.424619,1.786501 -15.192208,1.059435 -22.813692,1.538529 -6.944677,0.436549 -13.822415,1.881863 -20.780772,1.862309 -3.550015,-0.01 -7.197957,-0.432893 -10.332155,-2.100078 -1.567099,-0.833592 -2.982954,-1.976361 -4.036993,-3.404534 -1.054039,-1.428173 -1.735453,-3.147963 -1.831727,-4.920365 -0.12825,-2.36108 0.7814,-4.692685 2.154897,-6.617433 1.373497,-1.924747 3.189463,-3.487892 5.059531,-4.934956 1.590774,-1.230945 3.239411,-2.395976 5.006737,-3.356366 3.072277,-1.66952 6.467244,-2.697492 9.918328,-3.259811 7.036111,-1.146463 14.229501,-0.384841 21.352774,-0.668068 z"
++     inkscape:connector-curvature="0"
++     sodipodi:nodetypes="sssssssssszs" />
++  <g
++     id="g3550"
++     transform="matrix(0.51372076,0,0,0.51372076,-1.6205171,-7.7442559)">
++    <path
++       id="path3425"
++       d="m 83.431,203.6 0.8786,29.001 -7.0287,28.326 -28.115,53.955 -9.6645,37.094 2.6358,29.675 20.208,32.373 35.143,28.326 50.079,14.163 50.08,-1.3489 51.837,-17.535 43.929,-24.954 28.993,-11.466 40.415,2.6977 30.751,15.512 39.536,26.303 30.75,12.14 31.629,0.6744 36.022,-22.256 21.086,-21.582 19.329,-39.792 6.1501,-32.373 -25.479,34.396 -26.358,20.908 -27.236,4.0467 -43.929,-12.814 -28.115,-22.931 -29.872,-22.931 -36.901,-12.814 -36.901,-2.6978 -27.236,5.3955 -28.993,12.14 -58.865,26.303 -31.629,7.4188 -28.993,-10.116 -9.6644,-27.652 15.815,-50.583 9.6645,-35.071 -0.8786,-31.699 -1.7572,-12.14 -6.1501,-10.791 -41.294,4.0466 -29.872,-1.3489 z"
++       style="fill:#a0d82f;fill-rule:evenodd;fill-opacity:1"
++       inkscape:connector-curvature="0" />
++  </g>
++  <circle
++     id="svg_3"
++     cy="-332.10938"
++     cx="-510.00516"
++     r="0"
++     style="stroke-width:0.48228028" />
++  <path
++     style="stroke-width:0.51372075"
++     id="path3429"
++     d="m 79.603872,95.08209 c -10.251812,0.903892 -20.691131,3.079756 -32.638221,2.706795 9.839807,0.901014 22.049922,-2.211414 29.252801,-1.169332 12.713561,12.914427 -15.928426,8.793867 -16.587016,20.723497 -8.533929,13.03412 21.61737,12.25994 14.104717,22.95407 -10.357638,-1.28954 -24.753121,6.59001 -21.664632,17.15057 0.0051,11.27411 19.261447,6.10403 17.715147,17.06375 -8.641811,5.61753 -13.560173,20.81185 3.751857,25.33568 7.57173,2.34554 18.98866,3.16462 21.77765,-4.54746 -2.836149,-7.28148 12.152065,-17.92269 16.051205,-8.98652 12.74182,9.2778 36.09402,-0.40738 33.76635,-13.46924 -9.90813,-8.32587 2.17484,-8.86579 11.53766,-9.89632 -2.57102,12.61133 20.56013,19.61694 30.94551,10.45936 2.17278,-9.53261 11.13952,-6.21808 18.13845,-1.08272 -12.56099,7.96267 -3.64963,25.10861 12.86357,23.84178 7.61899,-5.49681 24.92573,-3.55628 19.21059,6.38812 3.99993,13.75693 34.46758,10.07766 33.3153,-3.57303 0.62433,-8.53804 16.82538,-15.15734 20.33872,-25.40093 -2.42214,10.58111 -8.74456,20.60945 -15.93819,29.77526 -8.83137,9.71138 -22.32938,19.88459 -39.07,18.25455 -17.51685,-4.45257 -28.91632,-17.08019 -44.31664,-24.42639 -4.46593,-6.11328 -40.09025,-7.5666 -19.7464,-5.04551 23.78271,4.29013 39.92741,19.71044 58.79021,30.44617 -14.42117,-5.19063 -25.29048,-14.60045 -38.25165,-21.37284 -11.86079,-7.37497 -28.49455,-8.67263 -41.5523,-2.25204 -17.70025,8.64643 -33.18688,21.60298 -55.034908,23.79862 -3.572311,0.37651 -7.176679,0.45512 -10.775807,0.54136 -29.23893,1.71157 -55.72329,-15.39107 -63.444514,-36.40122 -6.612099,-19.488 5.354512,-38.70629 14.189482,-56.58121 7.420696,-8.62691 6.000772,-26.24291 6.995849,-31.485943 5.380711,23.663003 -15.45683,44.078273 -18.054203,66.958363 -4.159134,14.00095 2.584478,28.74884 14.950816,39.17326 12.675546,12.62726 34.061741,17.20965 54.079384,15.41779 26.950821,-1.24885 43.481841,-20.14659 66.460051,-28.45396 -20.03048,4.86611 -35.48834,20.03305 -56.2216,25.6172 -20.445569,4.82779 -44.804666,0.9251 -60.341637,-10.58882 -10.125949,-7.74896 -18.238114,-18.34086 -18.505249,-29.47216 -1.811996,-18.83146 10.239996,-36.01234 16.869049,-53.65813 4.299534,-8.15943 3.027151,-18.08965 3.808263,-26.050266 -3.993357,-0.152349 -8.172783,-0.599718 -12.55328,-1.47253 7.763348,5.405886 5.157756,17.480376 2.256724,25.725596 -8.497455,17.89957 -21.400066,35.64451 -19.718144,55.34827 -0.976172,18.12407 14.191536,33.88913 33.174032,43.46078 11.166748,4.06487 -0.638504,2.99232 -6.99585,4.26594 -6.352671,5.05542 18.493434,3.38177 24.231695,4.93726 17.157759,0.99411 34.434187,0.60517 51.567287,-0.49804 16.34608,-2.42661 -12.65705,-2.37323 -10.40901,-5.52198 22.25541,-4.37536 35.8834,-21.31222 58.33813,-25.29253 21.08875,-1.5764 35.99025,12.38273 51.08696,21.43808 15.63972,4.89617 -3.07806,5.79272 -9.70418,7.34107 22.04221,2.55412 44.43633,3.53676 66.6604,1.92728 13.53295,-3.10529 -10.54566,-3.56307 -15.37412,-5.19732 25.51497,-14.18948 40.72881,-38.5157 38.59019,-62.68934 1.40991,-3.46207 -7.00818,-23.73647 -6.1215,-14.5085 1.03423,15.69571 -3.34442,33.9929 -20.14145,44.24009 -16.83308,9.68774 -38.27938,1.00946 -49.36651,-10.26414 -12.66835,-10.58882 -26.3662,-22.93918 -46.54515,-23.75497 -29.94581,-2.19194 -51.18971,17.60984 -77.546149,24.51322 -12.044183,6.19136 -25.90591,-4.15272 -26.883521,-13.14406 2.779949,-22.49275 17.273347,-44.00892 11.368127,-66.97891 l -2.679876,-6.561245 z m -2.623469,16.47913 c 3.644335,0.0192 3.21959,7.92261 1.354013,12.47314 -4.22561,5.9792 -13.073679,-4.78325 -7.672933,-8.2072 2.837691,-3.07806 4.892779,-4.27349 6.318766,-4.26599 z m 190.384917,23.75497 c -4.56071,6.31825 11.6255,14.65902 10.12697,23.19192 4.89479,-2.66405 -4.28248,-20.04436 -10.12697,-23.19192 z m 47.33525,0.75789 c -3.74702,-0.21395 -9.35434,13.65418 -7.67293,18.14667 l 0.22573,1.64576 c 4.39185,-2.8848 -0.261,-15.2123 8.15223,-19.55427 -0.23061,-0.14638 -0.45543,-0.22391 -0.70528,-0.23819 z M 67.729319,147.94103 c 3.416808,0.17546 3.80626,6.51089 1.523285,11.1087 -0.95588,6.00847 -12.817333,-3.72633 -8.096239,-6.77804 2.841749,-3.20212 5.019668,-4.41065 6.572543,-4.33092 z M 173.5147,161.43185 c 7.81729,-0.16187 16.77812,2.68445 7.10886,7.92568 -3.72904,3.0664 -11.38559,1.72004 -13.96344,-1.81898 -4.60823,-4.03297 0.77479,-5.98074 6.85509,-6.1066 z m -41.32678,9.59322 c 6.43024,-0.35554 7.63902,10.9366 -2.96196,12.49472 l -1.80542,0.28152 -1.89003,0.12992 c -12.8872,-0.34019 -10.69053,-8.12912 0.16927,-9.39801 2.47582,-2.39132 4.6876,-3.40849 6.48829,-3.50805 z m 78.19857,8.22878 c 5.03092,0.12051 14.00043,5.37044 10.7193,9.74477 -4.25253,2.04394 -9.56137,-0.34654 -12.04521,-3.13997 -3.28972,-4.90223 -1.69271,-6.67682 1.32586,-6.60439 z M 74.640918,183.6064 c 6.738989,-0.13493 21.861387,4.23219 11.678414,9.72268 -7.271717,6.17852 -19.644682,-2.93535 -13.963444,-9.39801 0.521478,-0.21343 1.322266,-0.30557 2.284979,-0.32485 z m 208.693922,11.41179 c 0.74263,3.43767 -10.63248,16.12929 -18.53351,21.00502 l -1.74901,0.9961 -1.41047,0.77957 c 2.53999,-1.98609 17.76189,-14.80903 21.69289,-22.78043 z m -29.11204,3.01 c 5.72952,0.1717 10.96639,2.20427 4.17495,7.08112 -4.59045,2.87504 -16.33426,0.32506 -12.49677,-5.58671 1.27706,-1.01758 4.884,-1.59716 8.32177,-1.49416 z m 2.99011,21.89272 c -2.99828,2.02144 -2.86975,0.3738 0,0 z m -8.40653,2.64186 c 0.33795,0.005 0.22739,0.15403 -0.64883,0.54136 -10.44137,2.13112 -0.81579,-0.5636 0.64883,-0.54136 z"
++     inkscape:connector-curvature="0" />
++  <g
++     id="svg_1"
++     transform="matrix(0.51372076,0,0,0.51372076,-1.6205171,-7.7442559)">
++    <path
++       id="path2407"
++       d="m 52.573,114.53 -21.314,24.198 0.9688,34.346 11.626,20.295 31.97,17.173 51.346,7.0252 30.033,-7.8058 25.189,-19.514 12.594,-17.173 2.9064,-31.223 -10.657,-21.076 -9.6879,-7.0252 -22.282,3.9029 -21.313,-3.1223 -17.438,-10.928 c -7.5105,12.417 -15.81,22.291 -31.604,20.407 l -18.774,-2.4533 -13.563,-7.0252 z"
++       style="fill:#a0d82f;fill-rule:evenodd;fill-opacity:1"
++       inkscape:connector-curvature="0" />
++    <path
++       id="path2200"
++       d="m 141.28,46.077 c -4.4145,-0.27166 12.892,11.967 18.988,15.231 13.133,5.1485 -6.2163,-10.633 -9.4523,-11.577 -5.3676,-2.5046 -8.3006,-3.578 -9.536,-3.654 z m -40.562,0.239 c -4.6607,-0.35836 -28.856,7.782 -29.67,15.778 5.8629,0.99665 13.402,-7.3725 19.878,-9.221 9.9856,-4.4707 11.91,-6.3939 9.7915,-6.5569 z m 2.9662,17.007 c -29.01,1.9196 -56.103,21.492 -55.513,46.307 3.4868,9.5152 -23.635,37.466 -15.861,16.529 21.623,-19.989 -39.961,7.4748 -9.6638,3.8938 10.916,18.518 -4.2079,42.922 27.355,66.752 45.81,26.7 30.182,17.749 33.805,18.964 l 0.0852,-0.1703 c 10.172,4.762 26.304,5.6354 41.664,5.0544 8.4158,-0.76654 16.724,-2.0149 23.311,-1.8789 4.3736,-0.5136 8.1728,-1.0183 11.148,-1.4683 v 0.0343 c 1.7671,-1.0564 -3.4064,-9.9843 -0.56956,-3.412 10.814,1.3132 12.699,-1.7606 15.15,-9.0181 1.5541,-12.267 20.399,-20.23 21.446,-33.98 6.0538,-13.403 0.34079,-33.435 13.436,-43.029 28.015,2.5679 -28.234,-19.66 -10.257,-3.4158 -0.21771,21.356 -10.123,-3.4768 -14.623,-9.6296 15.733,-14.312 11.41,-40.920002 -12.971,-47.060002 -23.136,-9.9038 -45.842,4.148 -67.943,-4.4735 z m 5.4212,7.2206 c 1.7829,69.882 -24.472,52.009 -35.525,50.469 -11.052,-1.5395 -32.404,-17.16 -9.8941,-34.602 9.5627,-8.8224 30.195,-15.898 45.419,-15.868 z m 37.71,-0.7933 c 9.6985,0.03816 19.801,1.0412 25.915,3.4082 23.349,9.6792 17.977,40.865 -9.4097,42.824 -3.8182,0.57584 -3.51931,0.43821 -11.571,0.6483 -23.608,0.68774 -43.254,-20.317 -36.348,-34.358 6.9058,-14.041 21.718,-12.561 31.415,-12.523 z m -40.26,51.547 c 17.693,-8.0571 48.962,4.7798 68.336,-2.1052 20.063,2.6226 20.91,37.288 16.02,53.309 -10.016,17.715 -27.325,35.403 -51.413,40.878 -27.205,5.9392 -53.325,-1.4162 -76.644,-14.322 -21.772,-9.5241 -34.266,-30.64 -31.478,-44.826 2.7879,-14.186 13.403,-39.132 29.026,-32.956 22.014,4.7697 28.46,8.0787 46.152,0.0216 z m 28.324,1.6856 c -2.0069,0.27714 13.521,5.7994 22.507,5.9087 19.114,-0.60892 -4.9037,-3.0395 -10.639,-3.1768 -7.611,-2.1433 -11.082,-2.8399 -11.868,-2.7319 z m -51.37,4.1328 c -7.7451,0.0776 -20.511,0.70935 -25.091,1.4683 6.5351,1.364 13.362,0.5746 20.006,0.44366 15.549,-1.5191 12.83,-1.9907 5.085,-1.9119 z m 54.38,1.092 c -3.4742,-0.32291 5.0851,4.3794 12.502,5.8744 16.778,2.3454 4.5534,-1.7441 -4.5344,-3.5862 -4.3184,-1.5242 -6.8112,-2.1802 -7.9677,-2.2882 z m -54.549,4.6451 c -0.08204,-0.0509 -1.9327,0.20087 -7.0368,1.0589 -8.4015,2.0264 7.2814,-0.90892 7.0368,-1.0589 z m -6.2305,30.769 c -2.3951,0.21738 -11.284,16.023 3.2202,18.92 l 3.2218,0.853 3.9412,0.2733 c 26.584,-5.8566 -19.331,3.3942 -12.333,-11.44 2.829,-6.3994 2.8857,-8.6914 1.9501,-8.6062 z m 53.022,1.1276 c -0.19566,0.0368 0.36763,0.75638 2.3745,2.6975 8.9285,5.8896 -1.674,-2.8285 -2.3745,-2.6975 z m -44.418,0.6826 c -3.7582,0.0699 -5.9434,2.9124 -0.84728,11.168 20.948,-1.3729 8.0229,-11.301 0.84728,-11.168 z m 40.648,3.7565 c -7.5954,0.0407 -18.86,6.2863 -4.7901,10.04 3.0955,3.0471 6.3946,0.25932 8.2232,-1.5369 4.372,-6.3155 1.1234,-8.5274 -3.4331,-8.5033 z m 10.001,5.8057 c -0.2083,0 -0.43228,0.0788 -0.7195,0.23901 0.98769,13.781 -26.419,1.903 -13.14,9.3576 11.393,6.9943 16.992,-9.6029 13.859,-9.5966 z"
++       inkscape:connector-curvature="0"
++       sodipodi:nodetypes="ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" />
++    <g
++       stroke-width="null"
++       id="g20">
++      <ellipse
++         id="svg_7"
++         cy="98.233002"
++         cx="139.85001"
++         rx="10.058"
++         ry="9.3753004" />
++      <ellipse
++         id="svg_8"
++         cy="97.757004"
++         cx="91.335999"
++         rx="10.058"
++         ry="9.3753004" />
++    </g>
++  </g>
++</svg>
+diff --git a/tests/interface/test_main.py b/tests/interface/test_main.py
+index dd0ff57..4f15788 100644
+--- a/tests/interface/test_main.py
++++ b/tests/interface/test_main.py
+@@ -1099,6 +1099,49 @@ def test_Window_add_micropython_plotter():
+     w.add_plotter.assert_called_once_with(mock_plotter, "MicroPython Plotter")
+ 
+ 
++def test_Window_add_snek_repl():
++    """
++    Ensure the expected object is instantiated and add_repl is called for a
++    Snek based REPL.
++    """
++    w = mu.interface.main.Window()
++    w.add_repl = mock.MagicMock()
++    mock_connection = mock.MagicMock()
++
++    mock_repl = mock.MagicMock()
++    mock_repl_class = mock.MagicMock(return_value=mock_repl)
++    with mock.patch("mu.interface.main.SnekREPLPane", mock_repl_class):
++        w.add_snek_repl("Test REPL", mock_connection)
++    mock_repl_class.assert_called_once_with(mock_connection)
++
++    mock_connection.data_received.connect.assert_called_once_with(
++        mock_repl.process_bytes
++    )
++    w.add_repl.assert_called_once_with(mock_repl, "Test REPL")
++
++
++def test_Window_add_snek_repl_no_interrupt():
++    """
++    Ensure the expected object is instantiated and add_repl is called for a
++    Snek based REPL.
++    """
++    w = mu.interface.main.Window()
++    w.add_repl = mock.MagicMock()
++    mock_connection = mock.MagicMock()
++
++    mock_repl = mock.MagicMock()
++    mock_repl_class = mock.MagicMock(return_value=mock_repl)
++    with mock.patch("mu.interface.main.SnekREPLPane", mock_repl_class):
++        w.add_snek_repl("Test REPL", mock_connection, force_interrupt=False)
++    mock_repl_class.assert_called_once_with(mock_connection)
++
++    assert mock_connection.send_interrupt.call_count == 0
++    mock_connection.data_received.connect.assert_called_once_with(
++        mock_repl.process_bytes
++    )
++    w.add_repl.assert_called_once_with(mock_repl, "Test REPL")
++
++
+ def test_Window_add_python3_plotter():
+     """
+     Ensure the plotter is created correctly when in Python 3 mode.
+diff --git a/tests/interface/test_panes.py b/tests/interface/test_panes.py
+index 0e9bff5..fe9ff77 100644
+--- a/tests/interface/test_panes.py
++++ b/tests/interface/test_panes.py
+@@ -935,6 +935,455 @@ def test_MicroPythonREPLPane_set_zoom():
+     rp.set_font_size.assert_called_once_with(expected)
+ 
+ 
++def test_SnekREPLPane_paste():
++    """
++    Pasting into the REPL should send bytes via the serial connection.
++    """
++    mock_serial = mock.MagicMock()
++    mock_clipboard = mock.MagicMock()
++    mock_clipboard.text.return_value = "paste me!"
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.insertFromMimeData(mock_clipboard)
++    mock_serial.write.assert_called_once_with(bytes("paste me!", "utf8"))
++
++
++def test_SnekREPLPane_paste_handle_mac_newlines():
++    """
++    Pasting into the REPL should handle '\r' properly.
++
++    '\r' -> '\n'
++    """
++    mock_serial = mock.MagicMock()
++    mock_clipboard = mock.MagicMock()
++    mock_clipboard.text.return_value = "paste\rme!"
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.insertFromMimeData(mock_clipboard)
++    mock_serial.write.assert_called_once_with(bytes("paste\nme!", "utf8"))
++
++
++def test_SnekREPLPane_paste_handle_windows_newlines():
++    """
++    Pasting into the REPL should handle '\r\n' properly.
++
++    '\r\n' -> '\n'
++    """
++    mock_serial = mock.MagicMock()
++    mock_clipboard = mock.MagicMock()
++    mock_clipboard.text.return_value = "paste\r\nme!"
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.insertFromMimeData(mock_clipboard)
++    mock_serial.write.assert_called_once_with(bytes("paste\nme!", "utf8"))
++
++
++def test_SnekREPLPane_paste_only_works_if_there_is_something_to_paste():
++    """
++    Pasting into the REPL should send bytes via the serial connection.
++    """
++    mock_serial = mock.MagicMock()
++    mock_clipboard = mock.MagicMock()
++    mock_clipboard.text.return_value = ""
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.insertFromMimeData(mock_clipboard)
++    assert mock_serial.write.call_count == 0
++
++
++def test_SnekREPLPane_context_menu():
++    """
++    Ensure the context menu for the REPL is configured correctly for non-OSX
++    platforms.
++    """
++    mock_serial = mock.MagicMock()
++    mock_platform = mock.MagicMock()
++    mock_platform.system.return_value = "WinNT"
++    mock_qmenu = mock.MagicMock()
++    mock_qmenu_class = mock.MagicMock(return_value=mock_qmenu)
++    with mock.patch("mu.interface.panes.platform", mock_platform), mock.patch(
++        "mu.interface.panes.QMenu", mock_qmenu_class
++    ), mock.patch("mu.interface.panes.QCursor"):
++        rp = mu.interface.panes.SnekREPLPane(mock_serial)
++        rp.context_menu()
++    assert mock_qmenu.addAction.call_count == 2
++    copy_action = mock_qmenu.addAction.call_args_list[0][0]
++    assert copy_action[0] == "Copy"
++    assert copy_action[1] == rp.copy
++    assert copy_action[2].toString() == "Ctrl+Shift+C"
++    paste_action = mock_qmenu.addAction.call_args_list[1][0]
++    assert paste_action[0] == "Paste"
++    assert paste_action[1] == rp.paste
++    assert paste_action[2].toString() == "Ctrl+Shift+V"
++    assert mock_qmenu.exec_.call_count == 1
++
++
++def test_SnekREPLPane_context_menu_darwin():
++    """
++    Ensure the context menu for the REPL is configured correctly for non-OSX
++    platforms.
++    """
++    mock_serial = mock.MagicMock()
++    mock_platform = mock.MagicMock()
++    mock_platform.system.return_value = "Darwin"
++    mock_qmenu = mock.MagicMock()
++    mock_qmenu_class = mock.MagicMock(return_value=mock_qmenu)
++    with mock.patch("mu.interface.panes.platform", mock_platform), mock.patch(
++        "mu.interface.panes.QMenu", mock_qmenu_class
++    ), mock.patch("mu.interface.panes.QCursor"):
++        rp = mu.interface.panes.SnekREPLPane(mock_serial)
++        rp.context_menu()
++    assert mock_qmenu.addAction.call_count == 2
++    copy_action = mock_qmenu.addAction.call_args_list[0][0]
++    assert copy_action[0] == "Copy"
++    assert copy_action[1] == rp.copy
++    assert copy_action[2].toString() == "Ctrl+C"
++    paste_action = mock_qmenu.addAction.call_args_list[1][0]
++    assert paste_action[0] == "Paste"
++    assert paste_action[1] == rp.paste
++    assert paste_action[2].toString() == "Ctrl+V"
++    assert mock_qmenu.exec_.call_count == 1
++
++
++def test_SnekREPLPane_keyPressEvent():
++    """
++    Ensure key presses in the REPL are handled correctly.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_A)
++    data.text = mock.MagicMock(return_value="a")
++    data.modifiers = mock.MagicMock(return_value=None)
++    rp.keyPressEvent(data)
++    mock_serial.write.assert_called_once_with(bytes("a", "utf-8"))
++
++
++def test_SnekREPLPane_keyPressEvent_backspace():
++    """
++    Ensure backspaces in the REPL are handled correctly.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_Backspace)
++    data.text = mock.MagicMock(return_value="\b")
++    data.modifiers = mock.MagicMock(return_value=None)
++    rp.keyPressEvent(data)
++    mock_serial.write.assert_called_once_with(b"\b")
++
++
++def test_SnekREPLPane_keyPressEvent_return():
++    """
++    Ensure backspaces in the REPL are handled correctly.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_Return)
++    data.text = mock.MagicMock(return_value="")
++    data.modifiers = mock.MagicMock(return_value=Qt.NoModifier)
++    rp.keyPressEvent(data)
++    mock_serial.write.assert_called_once_with(mu.interface.panes.VT100_RETURN)
++
++
++def test_SnekREPLPane_keyPressEvent_delete():
++    """
++    Ensure delete in the REPL is handled correctly.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_Delete)
++    data.text = mock.MagicMock(return_value="\b")
++    data.modifiers = mock.MagicMock(return_value=None)
++    rp.keyPressEvent(data)
++    mock_serial.write.assert_called_once_with(b"\x1B[\x33\x7E")
++
++
++@mock.patch("PyQt5.QtWidgets.QTextEdit.keyPressEvent")
++def test_SnekREPLPane_keyPressEvent_shift_right(
++    mock_super_keyPressEvent,
++):
++    """
++    Ensure right arrows with shift in the REPL are passed through to
++    the super class, to perform a selection.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_Right)
++    data.text = mock.MagicMock(return_value="")
++    data.modifiers = mock.MagicMock(return_value=Qt.ShiftModifier)
++    rp.keyPressEvent(data)
++    mock_super_keyPressEvent.assert_called_once_with(data)
++
++
++@mock.patch("PyQt5.QtWidgets.QTextEdit.keyPressEvent")
++def test_SnekREPLPane_keyPressEvent_shift_left(
++    mock_super_keyPressEvent,
++):
++    """
++    Ensure left arrows with shift in the REPL are passed through to
++    the super class, to perform a selection.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_Left)
++    data.text = mock.MagicMock(return_value="")
++    data.modifiers = mock.MagicMock(return_value=Qt.ShiftModifier)
++    rp.keyPressEvent(data)
++    mock_super_keyPressEvent.assert_called_once_with(data)
++
++
++@mock.patch("PyQt5.QtGui.QTextCursor.hasSelection", return_value=True)
++@mock.patch("PyQt5.QtGui.QTextCursor.selectionEnd", return_value=30)
++def test_SnekREPLPane_keyPressEvent_right_with_selection(a, b):
++    """
++    Ensure right arrows in the REPL when a selection is made, moves the cursor
++    to the end of the selection.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_Right)
++    data.text = mock.MagicMock(return_value="")
++    data.modifiers = mock.MagicMock(return_value=Qt.NoModifier)
++    rp.move_cursor_to = mock.MagicMock()
++    rp.keyPressEvent(data)
++    rp.move_cursor_to.assert_called_once_with(30)
++
++
++@mock.patch("PyQt5.QtGui.QTextCursor.hasSelection", return_value=True)
++@mock.patch("PyQt5.QtGui.QTextCursor.selectionStart", return_value=20)
++def test_SnekREPLPane_keyPressEvent_left_with_selection(a, b):
++    """
++    Ensure left arrows in the REPL when a selection is made, moves the cursor
++    to the start of the selection.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_Left)
++    data.text = mock.MagicMock(return_value="")
++    data.modifiers = mock.MagicMock(return_value=Qt.NoModifier)
++    rp.move_cursor_to = mock.MagicMock()
++    rp.keyPressEvent(data)
++    rp.move_cursor_to.assert_called_once_with(20)
++
++
++def test_SnekREPLPane_keyPressEvent_CTRL_C_Darwin():
++    """
++    Ensure end key in the REPL is handled correctly.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.copy = mock.MagicMock()
++    data = mock.MagicMock()
++    data.key = mock.MagicMock(return_value=Qt.Key_C)
++    data.text = mock.MagicMock(return_value="1b")
++    data.modifiers.return_value = Qt.ControlModifier | Qt.ShiftModifier
++    rp.keyPressEvent(data)
++    rp.copy.assert_called_once_with()
++
++
++def test_SnekREPLPane_keyPressEvent_CTRL_V_Darwin():
++    """
++    Ensure end key in the REPL is handled correctly.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.paste = mock.MagicMock()
++    data = mock.MagicMock()
++    data.key = mock.MagicMock(return_value=Qt.Key_V)
++    data.text = mock.MagicMock(return_value="1b")
++    data.modifiers.return_value = Qt.ControlModifier | Qt.ShiftModifier
++    rp.keyPressEvent(data)
++    rp.paste.assert_called_once_with()
++
++
++@mock.patch("platform.system", mock.MagicMock(return_value="Darwin"))
++def test_SnekREPLPane_keyPressEvent_ctrl_passthrough_darwin():
++    """
++    Ensure backspaces in the REPL are handled correctly.
++    """
++    mock_repl_connection = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_repl_connection)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_M)
++    data.text = mock.MagicMock(return_value="a")
++    data.modifiers = mock.MagicMock(return_value=Qt.MetaModifier)
++    rp.keyPressEvent(data)
++    expected = 1 + Qt.Key_M - Qt.Key_A
++    mock_repl_connection.write.assert_called_once_with(bytes([expected]))
++
++
++@mock.patch("platform.system", mock.MagicMock(return_value="Windows"))
++def test_SnekREPLPane_keyPressEvent_ctrl_passthrough_windows():
++    """
++    Ensure backspaces in the REPL are handled correctly.
++    """
++    mock_repl_connection = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_repl_connection)
++    data = mock.MagicMock
++    data.key = mock.MagicMock(return_value=Qt.Key_M)
++    data.text = mock.MagicMock(return_value="a")
++    data.modifiers = mock.MagicMock(return_value=Qt.ControlModifier)
++    rp.keyPressEvent(data)
++    expected = 1 + Qt.Key_M - Qt.Key_A
++    mock_repl_connection.write.assert_called_once_with(bytes([expected]))
++
++
++def test_SnekREPLPane_set_devicecursor_to_qtcursor():
++    """
++    Test that set_devicecursor_to_qtcursor resets
++    cursor position correctly
++    """
++    mock_repl_connection = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_repl_connection)
++    rp.move_cursor_to = mock.MagicMock()
++    rp.setPlainText("Hello world!")
++    # Move Qt cursor 10 steps forward
++    tc = rp.textCursor()
++    tc.setPosition(tc.position() + 10)
++    rp.setTextCursor(tc)
++    rp.set_devicecursor_to_qtcursor()
++    assert tc.position() == 10
++
++
++def test_SnekREPLPane_process_bytes():
++    """
++    Ensure bytes coming from the device to the application are processed as
++    expected. Backspace is enacted, carriage-return is ignored, newline moves
++    the cursor position to the end of the line before enacted and all others
++    are simply inserted.
++    """
++    mock_serial = mock.MagicMock()
++    mock_tc = mock.MagicMock()
++    mock_tc.movePosition = mock.MagicMock(
++        side_effect=[True, False, True, True]
++    )
++    mock_tc.deleteChar = mock.MagicMock(return_value=None)
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.textCursor = mock.MagicMock(return_value=mock_tc)
++    rp.setTextCursor = mock.MagicMock(return_value=None)
++    rp.insertPlainText = mock.MagicMock(return_value=None)
++    rp.ensureCursorVisible = mock.MagicMock(return_value=None)
++    bs = bytes([8, 13, 10, 65])  # \b, \r, \n, 'A'
++    rp.process_bytes(bs)
++    rp.textCursor.assert_called_once_with()
++    assert mock_tc.movePosition.call_count == 4
++    assert mock_tc.movePosition.call_args_list[0][0][0] == QTextCursor.Down
++    assert mock_tc.movePosition.call_args_list[1][0][0] == QTextCursor.Down
++    assert mock_tc.movePosition.call_args_list[2][0][0] == QTextCursor.Left
++    assert mock_tc.movePosition.call_args_list[3][0][0] == QTextCursor.End
++    assert rp.setTextCursor.call_count == 3
++    assert rp.setTextCursor.call_args_list[0][0][0] == mock_tc
++    assert rp.setTextCursor.call_args_list[1][0][0] == mock_tc
++    assert rp.setTextCursor.call_args_list[2][0][0] == mock_tc
++    assert rp.insertPlainText.call_count == 2
++    assert rp.insertPlainText.call_args_list[0][0][0] == chr(10)
++    assert rp.insertPlainText.call_args_list[1][0][0] == chr(65)
++    rp.ensureCursorVisible.assert_called_once_with()
++
++
++def test_SnekREPLPane_process_bytes_gettext():
++    """
++    Ensure bytes coming from the device to the application in 'gettext' mode
++    are processed as expected. Carriage-return is
++    ignored, all others are simply passed to recv_text callback
++    """
++    mock_serial = mock.MagicMock()
++    mock_tc = mock.MagicMock()
++    mock_tc.movePosition = mock.MagicMock(
++        side_effect=[True, False, True, True]
++    )
++    mock_tc.deleteChar = mock.MagicMock(return_value=None)
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.textCursor = mock.MagicMock(return_value=mock_tc)
++    rp.setTextCursor = mock.MagicMock(return_value=None)
++    rp.insertPlainText = mock.MagicMock(return_value=None)
++    rp.ensureCursorVisible = mock.MagicMock(return_value=None)
++    rp.text_recv = mock.MagicMock()
++    rp.text_recv.recv_text = mock.MagicMock()
++    bs = bytes([2, 65, 66, 67, 13, 3])  # \2, 'A', 'B', 'C' \r \3
++    rp.process_bytes(bs)
++    rp.text_recv.recv_text.assert_called_once_with("ABC")
++
++
++def test_SnekREPLPane_clear():
++    """
++    Ensure setText is called with an empty string.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.setText = mock.MagicMock(return_value=None)
++    rp.clear()
++    rp.setText.assert_called_once_with("")
++
++
++def test_SnekREPLPane_set_font_size():
++    """
++    Ensure the font is updated to the expected point size.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    mock_font = mock.MagicMock()
++    rp.font = mock.MagicMock(return_value=mock_font)
++    rp.setFont = mock.MagicMock()
++    rp.set_font_size(123)
++    mock_font.setPointSize.assert_called_once_with(123)
++    rp.setFont.assert_called_once_with(mock_font)
++
++
++def test_SnekREPLPane_set_zoom():
++    """
++    Ensure the font size is correctly set from the t-shirt size.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.set_font_size = mock.MagicMock()
++    rp.set_zoom("xxl")
++    expected = mu.interface.panes.PANE_ZOOM_SIZES["xxl"]
++    rp.set_font_size.assert_called_once_with(expected)
++
++
++def test_SnekREPLPane_send_commands():
++    """
++    Ensure the list of commands is correctly encoded and bound by control
++    commands to put the board into and out of raw mode.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    rp.execute = mock.MagicMock()
++    commands = [
++        "import os\n",
++        "print(os.listdir())\n",
++    ]
++    rp.send_commands(commands)
++    expected = [
++        b"\x0e\x03",  # Put the board into raw mode.
++        b"import os\n",  # The commands to run.
++        b"print(os.listdir())\n",
++        b"\x0f",  # Evaluate the commands.
++    ]
++    rp.execute.assert_called_once_with(expected)
++
++
++def test_SnekREPLPane_execute():
++    """
++    Ensure the first command is sent via serial to the connected device, and
++    further commands are scheduled for the future.
++    """
++    mock_serial = mock.MagicMock()
++    rp = mu.interface.panes.SnekREPLPane(mock_serial)
++    commands = [
++        b"A",
++        b"B",
++    ]
++    with mock.patch("mu.interface.panes.QTimer") as mock_timer:
++        rp.execute(commands)
++        mock_serial.write.assert_called_once_with(b"A")
++        assert mock_timer.singleShot.call_count == 1
++
++
+ def test_MuFileList_show_confirm_overwrite_dialog():
+     """
+     Ensure the user is notified of an existing file.
+diff --git a/tests/modes/test_snek.py b/tests/modes/test_snek.py
+new file mode 100644
+index 0000000..f94ef07
+--- /dev/null
++++ b/tests/modes/test_snek.py
+@@ -0,0 +1,359 @@
++# -*- coding: utf-8 -*-
++"""
++Tests for the Snek mode.
++"""
++import pytest
++from mu.logic import Device
++from mu.modes.snek import SnekMode
++from mu.modes.api import SNEK_APIS
++from PyQt5.QtWidgets import QMessageBox
++from unittest import mock
++
++
++@pytest.fixture()
++def snek_device():
++    return Device(
++        0x0403, 0x6001, "COM0", "123456", "Snek", "Snekboard", "snek"
++    )
++
++
++def test_snek_mode():
++    """
++    Sanity check for setting up the mode.
++    """
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    am = SnekMode(editor, view)
++    assert am.name == "Snek"
++    assert am.description is not None
++    assert am.icon == "snek"
++    assert am.editor == editor
++    assert am.view == view
++
++    actions = am.actions()
++    assert 3 <= len(actions) <= 4
++    assert actions[0]["name"] == "serial"
++    assert actions[0]["handler"] == am.toggle_repl
++    assert actions[1]["name"] == "flash"
++    assert actions[1]["handler"] == am.put
++    assert actions[2]["name"] == "getflash"
++    assert actions[2]["handler"] == am.get
++
++    # Sometimes charts just aren't available for testing
++    if len(actions) == 4:
++        assert actions[3]["name"] == "plotter"
++        assert actions[3]["handler"] == am.toggle_plotter
++    assert "code" not in am.module_names
++
++
++def test_snek_mode_no_charts():
++    """
++    If QCharts is not available, ensure the plotter feature is not available.
++    """
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    am = SnekMode(editor, view)
++    with mock.patch("mu.modes.snek.CHARTS", False):
++        actions = am.actions()
++        assert len(actions) == 3
++        assert actions[0]["name"] == "serial"
++        assert actions[0]["handler"] == am.toggle_repl
++        assert actions[1]["name"] == "flash"
++        assert actions[1]["handler"] == am.put
++        assert actions[2]["name"] == "getflash"
++        assert actions[2]["handler"] == am.get
++
++
++def test_snek_put():
++    """
++    Put current editor contents to eeprom
++    """
++
++    class TestSnekMode(SnekMode):
++        def toggle_repl(self, event):
++            self.repl = True
++
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    mock_tab = mock.MagicMock()
++    mock_tab.text.return_value = "# Write your code here :-)"
++    view.current_tab = mock_tab
++    view.repl_pane = mock.MagicMock()
++    view.repl_pane.send_commands = mock.MagicMock()
++    mm = TestSnekMode(editor, view)
++    mm.repl = None
++    mm.put()
++    assert view.repl_pane.send_commands.call_count == 1
++    assert (
++        view.repl_pane.send_commands.call_args[0][0][0]
++        == "eeprom.write()\n"
++        + mock_tab.text.return_value
++        + "\n"
++        + "\x04reset()\n"
++    )
++
++
++def test_snek_put_empty():
++    """
++    Put empty editor contents to eeprom
++    """
++
++    class TestSnekMode(SnekMode):
++        def toggle_repl(self, event):
++            self.repl = True
++
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    mock_tab = mock.MagicMock()
++    mock_tab.text.return_value = ""
++    view.current_tab = mock_tab
++    view.repl_pane = mock.MagicMock()
++    view.repl_pane.send_commands = mock.MagicMock()
++    print("send commands mock is %r" % view.repl_pane.send_commands)
++    mm = TestSnekMode(editor, view)
++    mm.repl = None
++    mm.put()
++    assert view.repl_pane.send_commands.call_count == 1
++    assert (
++        view.repl_pane.send_commands.call_args[0][0][0]
++        == "eeprom.write()\n"
++        + mock_tab.text.return_value
++        + "\n"
++        + "\x04reset()\n"
++    )
++
++
++def test_snek_put_none():
++    """
++    Put current editor contents to eeprom
++    """
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    view.current_tab = None
++    view.repl_pane = mock.MagicMock()
++    view.repl_pane.send_commands = mock.MagicMock()
++    view.show_message = mock.MagicMock()
++    mm = SnekMode(editor, view)
++    mm.put()
++    assert view.repl_pane.send_commands.call_count == 0
++
++
++mm = None
++
++
++def set_snek_repl(*args, **kwargs):
++    mm.repl = True
++
++
++def test_snek_get_new():
++    """
++    Get current editor contents to eeprom
++    """
++    global mm
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    view.repl_pane = mock.MagicMock()
++    view.repl_pane.send_commands = mock.MagicMock()
++    view.widgets = ()
++    view.add_tab = mock.MagicMock()
++    mm = SnekMode(editor, view)
++    mm.repl = False
++    mm.toggle_repl = mock.MagicMock()
++    mm.toggle_repl.side_effect = set_snek_repl
++    mm.get()
++    assert mm.toggle_repl.call_count == 1
++    assert view.repl_pane.send_commands.call_count == 1
++    mm.recv_text("hello")
++    assert view.add_tab.call_count == 1
++
++
++def test_snek_get_existing():
++    """
++    Get current editor contents to eeprom
++    """
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    tab = mock.MagicMock()
++    tab.path = None
++    tab.setText = mock.MagicMock()
++    tab.setModified(False)
++    view.repl_pane = mock.MagicMock()
++    view.repl_pane.send_commands = mock.MagicMock()
++    view.widgets = (tab,)
++    mm = SnekMode(editor, view)
++    mm.repl = True
++    mm.get()
++    assert view.repl_pane.send_commands.call_count == 1
++    mm.recv_text("hello")
++    assert tab.setText.call_count == 1
++
++
++def test_snek_get_existing_modified():
++    """
++    Get current editor contents into a modified buffer from eeprom
++    """
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    tab = mock.MagicMock()
++    tab.path = None
++    tab.setText = mock.MagicMock()
++    tab.isModified.return_value = True
++
++    mock_window = mock.MagicMock()
++    mock_window.show_confirmation = mock.MagicMock(
++        return_value=QMessageBox.Cancel
++    )
++    tab.nativeParentWidget = mock.MagicMock(return_value=mock_window)
++    view.repl_pane = mock.MagicMock()
++    view.repl_pane.send_commands = mock.MagicMock()
++    view.widgets = (tab,)
++    mm = SnekMode(editor, view)
++    mm.repl = True
++    mm.get()
++    assert mock_window.show_confirmation.call_count == 1
++    assert view.repl_pane.send_commands.call_count == 0
++
++
++def test_api():
++    """
++    Ensure the correct API definitions are returned.
++    """
++    editor = mock.MagicMock()
++    view = mock.MagicMock()
++    am = SnekMode(editor, view)
++    assert am.api() == SNEK_APIS
++
++
++def test_snek_mode_add_repl_no_port():
++    """
++    If it's not possible to find a connected snek device then ensure a helpful
++    message is enacted.
++    """
++    editor = mock.MagicMock()
++    editor.current_device = None
++    view = mock.MagicMock()
++    view.show_message = mock.MagicMock()
++    mm = SnekMode(editor, view)
++    mm.add_repl()
++    assert view.show_message.call_count == 1
++    message = "Could not find an attached device."
++    assert view.show_message.call_args[0][0] == message
++
++
++def test_snek_mode_add_repl_ioerror(snek_device):
++    """
++    Sometimes when attempting to connect to the device there is an IOError
++    because it's still booting up or connecting to the host computer. In this
++    case, ensure a useful message is displayed.
++    """
++    editor = mock.MagicMock()
++    editor.current_device = snek_device
++    view = mock.MagicMock()
++    view.show_message = mock.MagicMock()
++    ex = IOError("Cannot connect to device on port COM0")
++    mm = SnekMode(editor, view)
++    mock_repl_connection = mock.MagicMock()
++    mock_repl_connection.open = mock.MagicMock(side_effect=ex)
++    mock_connection_class = mock.MagicMock(return_value=mock_repl_connection)
++    with mock.patch("mu.modes.snek.SnekREPLConnection", mock_connection_class):
++        mm.add_repl()
++    assert view.show_message.call_count == 1
++    assert view.show_message.call_args[0][0] == str(ex)
++
++
++def test_snek_mode_add_repl_exception(snek_device):
++    """
++    Ensure that any non-IOError based exceptions are logged.
++    """
++    editor = mock.MagicMock()
++    editor.current_device = snek_device
++    view = mock.MagicMock()
++    ex = Exception("BOOM")
++    mm = SnekMode(editor, view)
++    mock_repl_connection = mock.MagicMock()
++    mock_repl_connection.open = mock.MagicMock(side_effect=ex)
++    mock_connection_class = mock.MagicMock(return_value=mock_repl_connection)
++    with mock.patch("mu.modes.snek.logger", return_value=None) as logger:
++        with mock.patch(
++            "mu.modes.snek.SnekREPLConnection", mock_connection_class
++        ):
++            mm.add_repl()
++            logger.error.assert_called_once_with(ex)
++
++
++def test_snek_mode_add_repl(snek_device):
++    """
++    Nothing goes wrong so check the _view.add_snek_repl gets the
++    expected argument.
++    """
++    editor = mock.MagicMock()
++    editor.current_device = snek_device
++    view = mock.MagicMock()
++    view.show_message = mock.MagicMock()
++    view.add_snek_repl = mock.MagicMock()
++    mm = SnekMode(editor, view)
++    mock_repl_connection = mock.MagicMock()
++    mock_connection_class = mock.MagicMock(return_value=mock_repl_connection)
++    with mock.patch("mu.modes.snek.SnekREPLConnection", mock_connection_class):
++        mm.add_repl()
++    assert view.show_message.call_count == 0
++    assert view.add_snek_repl.call_args[0][1] == mock_repl_connection
++    mock_repl_connection.send_interrupt.assert_called_once_with()
++
++
++def test_snek_mode_add_repl_no_force_interrupt(snek_device):
++    """
++    Nothing goes wrong so check the _view.add_snek_repl gets the
++    expected arguments (including the flag so no keyboard interrupt is called).
++    """
++    editor = mock.MagicMock()
++    editor.current_device = snek_device
++    view = mock.MagicMock()
++    view.show_message = mock.MagicMock()
++    view.add_snek_repl = mock.MagicMock()
++    mm = SnekMode(editor, view)
++    mm.force_interrupt = False
++    mock_repl_connection = mock.MagicMock()
++    mock_connection_class = mock.MagicMock(return_value=mock_repl_connection)
++    with mock.patch("mu.modes.snek.SnekREPLConnection", mock_connection_class):
++        mm.add_repl()
++    assert view.show_message.call_count == 0
++    assert view.add_snek_repl.call_args[0][1] == mock_repl_connection
++    assert mock_repl_connection.send_interrupt.call_count == 0
++
++
++def test_snek_stop(snek_device):
++    """
++    Ensure that this method, called when Mu is quitting, shuts down
++    the serial port.
++    """
++    editor = mock.MagicMock()
++    editor.current_device = snek_device
++    view = mock.MagicMock()
++    mm = SnekMode(editor, view)
++    view.remove_repl = mock.MagicMock()
++    mm.stop()
++    view.remove_repl.assert_called_once_with()
++
++
++def test_device_changed(snek_device):
++    """
++    Ensure REPL pane is updated, when the user changes
++    device.
++    """
++    view = mock.MagicMock()
++    editor = mock.MagicMock()
++    mm = SnekMode(editor, view)
++    mm.repl = mock.MagicMock()
++    mm.add_repl = mock.MagicMock()
++    mm.remove_repl = mock.MagicMock()
++    mm.plotter = mock.MagicMock()
++    mm.add_plotter = mock.MagicMock()
++    mm.remove_plotter = mock.MagicMock()
++    mm.connection = mock.MagicMock()
++    mm.device_changed(snek_device)
++    mm.remove_repl.assert_called_once_with()
++    mm.add_repl.assert_called_once_with()
++    mm.remove_plotter.assert_called_once_with()
++    mm.add_plotter.assert_called_once_with()
++    mm.connection.send_interrupt.assert_called_once_with()

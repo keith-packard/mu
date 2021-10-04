@@ -1,0 +1,73 @@
+From: Keith Packard <keithp@keithp.com>
+Date: Mon, 4 Oct 2021 09:04:49 -0700
+Subject: Disable venv
+
+Signed-off-by: Keith Packard <keithp@keithp.com>
+---
+ mu/app.py                 | 3 ++-
+ mu/logic.py               | 6 ++++--
+ mu/virtual_environment.py | 3 ++-
+ setup.py                  | 1 +
+ 4 files changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/mu/app.py b/mu/app.py
+index 979dff4..5b8fc03 100644
+--- a/mu/app.py
++++ b/mu/app.py
+@@ -144,7 +144,8 @@ class StartupWorker(QObject):
+         called from here.
+         """
+         try:
+-            venv.ensure_and_create(self.display_text)
++            if venv:
++                venv.ensure_and_create(self.display_text)
+             self.finished.emit()  # Always called last.
+         except Exception as ex:
+             # Catch all exceptions just in case.
+diff --git a/mu/logic.py b/mu/logic.py
+index 3abb3f7..7a3114b 100644
+--- a/mu/logic.py
++++ b/mu/logic.py
+@@ -926,7 +926,7 @@ class Editor(QObject):
+             self._view.zoom_position = old_session["zoom_level"]
+             self._view.set_zoom()
+ 
+-        if "venv_path" in old_session:
++        if venv and "venv_path" in old_session:
+             venv.relocate(old_session["venv_path"])
+             venv.ensure()
+ 
+@@ -1420,7 +1420,9 @@ class Editor(QObject):
+             "microbit_runtime": self.microbit_runtime,
+             "locale": self.user_locale,
+         }
+-        baseline_packages, user_packages = venv.installed_packages()
++        user_packages = []
++        if venv:
++            baseline_packages, user_packages = venv.installed_packages()
+         packages = user_packages
+         with open(LOG_FILE, "r", encoding="utf8") as logfile:
+             new_settings = self._view.show_admin(
+diff --git a/mu/virtual_environment.py b/mu/virtual_environment.py
+index 22d3f18..edd4171 100644
+--- a/mu/virtual_environment.py
++++ b/mu/virtual_environment.py
+@@ -932,4 +932,5 @@ class VirtualEnvironment(object):
+ # Create a singleton virtual environment to be used throughout
+ # the application
+ #
+-venv = VirtualEnvironment()
++# venv = VirtualEnvironment()
++venv = None
+diff --git a/setup.py b/setup.py
+index 93f99b1..1d9178d 100644
+--- a/setup.py
++++ b/setup.py
+@@ -117,6 +117,7 @@ setup(
+         "mu.interface",
+         "mu.modes.api",
+         "mu.wheels",
++        "adafruit_board_toolkit",
+     ],
+     python_requires=">=3.5,<3.9",
+     install_requires=install_requires,

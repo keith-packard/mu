@@ -1,11 +1,17 @@
-Description: Remove embedded Youtube videos and replace with links
-Author: Nick Morrott <knowledgejunkie@gmail.com>
-Forwarded: not-needed
-Last-Update: 2018-12-21
+From: Keith Packard <keithp@keithp.com>
+Date: Mon, 4 Oct 2021 09:48:05 -0700
+Subject: Remove embedded Youtube videos and replace with links
+
 ---
+ docs/index.rst           | 10 ++--------
+ docs/user-experience.rst | 11 ++---------
+ 2 files changed, 4 insertions(+), 17 deletions(-)
+
+diff --git a/docs/index.rst b/docs/index.rst
+index 396f40b..ab1f862 100644
 --- a/docs/index.rst
 +++ b/docs/index.rst
-@@ -86,14 +86,8 @@
+@@ -93,14 +93,8 @@ Mu could be turned into a generic beginner's code editor and, thanks to the
  wonderful support of the `Raspberry Pi Foundation <http://raspberrypi.org/>`_
  the work needed to make such changes was done over the summer of 2017.
  
@@ -22,9 +28,11 @@ Last-Update: 2018-12-21
  
  How?
  ----
+diff --git a/docs/user-experience.rst b/docs/user-experience.rst
+index 9aaafb8..f4be757 100644
 --- a/docs/user-experience.rst
 +++ b/docs/user-experience.rst
-@@ -171,15 +171,8 @@
+@@ -171,15 +171,8 @@ MicroPython's REPL. I wondered "how hard can it be?" and set out to create an
  editor based on Carrie Anne's comments about the needs of teachers and learners
  when it came to code editing.
  

@@ -1,11 +1,18 @@
-Description: Remove references to non-DFSG images removed from source
-Author: Nick Morrott <nickm@debian.org>
-Forwarded: not-needed
-Last-Update: 2020-06-15
+From: Keith Packard <keithp@keithp.com>
+Date: Mon, 4 Oct 2021 09:49:50 -0700
+Subject: Remove references to non-DFSG images removed from source
+
 ---
+ docs/copyright.rst       | 51 ------------------------------------------------
+ docs/modes.rst           |  4 ----
+ docs/user-experience.rst |  6 ------
+ 3 files changed, 61 deletions(-)
+
+diff --git a/docs/copyright.rst b/docs/copyright.rst
+index 4a7890b..7b61db5 100644
 --- a/docs/copyright.rst
 +++ b/docs/copyright.rst
-@@ -15,38 +15,6 @@
+@@ -15,38 +15,6 @@ Notes on Image Copyright Status
  All images used in Mu's developer documentation fall under Mu's copyright
  status, except for the following images sourced from third parties:
  
@@ -44,7 +51,7 @@ Last-Update: 2020-06-15
  pygame.png
  ++++++++++
  
-@@ -66,21 +34,3 @@
+@@ -66,25 +34,6 @@ maintainer of `Pygame <https://pygame.org>`_::
      anywhere.  Just a "logo by Gareth Noyce" would do, but I won't be
      complaining if people forget. :)'
  
@@ -66,9 +73,15 @@ Last-Update: 2020-06-15
 -
 -    In general, we want the logo to be used as widely as possible to
 -    indicate use of Python or suitability for Python."
+-
+ lego.png
+ ++++++++
+ 
+diff --git a/docs/modes.rst b/docs/modes.rst
+index 8113889..45d6628 100644
 --- a/docs/modes.rst
 +++ b/docs/modes.rst
-@@ -28,8 +28,6 @@
+@@ -28,8 +28,6 @@ images below are used with permission, see :doc:`copyright`).
  Adafruit Mode
  +++++++++++++
  
@@ -77,7 +90,7 @@ Last-Update: 2020-06-15
  `Adafruit <http://adafruit.com/>`_ make extraordinarily awesome boards for
  embedded development. Many of these boards run Adafruit's own flavour of 
  `MicroPython <http://micropython.org/>`_ called
-@@ -83,8 +81,6 @@
+@@ -83,8 +81,6 @@ are available by default.
  Standard Python3 Mode
  +++++++++++++++++++++
  
@@ -86,9 +99,11 @@ Last-Update: 2020-06-15
  This mode is for creating simple Python 3 programs. As with the other modes,
  there is a REPL for live programming, but in this case it is an iPython based
  REPL that uses `project Jupyter <http://jupyter.org/>`_. As with other Jupyter
+diff --git a/docs/user-experience.rst b/docs/user-experience.rst
+index f4be757..6862cdc 100644
 --- a/docs/user-experience.rst
 +++ b/docs/user-experience.rst
-@@ -28,12 +28,6 @@
+@@ -28,12 +28,6 @@ It's important to differentiate between design and usability. Plenty of
  software looks beautiful but is difficult to use. With Mu, we aim to put
  usability and a great experience before looks.
  

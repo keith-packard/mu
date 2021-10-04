@@ -71,21 +71,9 @@ EXPANDED_IMPORT = (
 DEFAULT_IMAGES = [
     "alien.png",
     "alien_hurt.png",
-    "cat1.png",
-    "cat2.png",
-    "cat3.png",
-    "cat4.png",
-    "splat.png",
 ]
 # Default sound effects to copy over for use in PyGameZero demo apps.
-DEFAULT_SOUNDS = [
-    "eep.wav",
-    "meow1.wav",
-    "meow2.wav",
-    "meow3.wav",
-    "meow4.wav",
-    "splat.wav",
-]
+DEFAULT_SOUNDS = []
 MOTD = [  # Candidate phrases for the message of the day (MOTD).
     _("Hello, World!"),
     _(

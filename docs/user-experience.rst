@@ -28,12 +28,6 @@ It's important to differentiate between design and usability. Plenty of
 software looks beautiful but is difficult to use. With Mu, we aim to put
 usability and a great experience before looks.
 
-This beautiful yet inconvenient wine glass from
-`the uncomfortable <https://www.theuncomfortable.com/>`_ illustrates what I
-mean (used with permission, see :doc:`copyright`).
-
-.. image:: beautifully_useless.jpg 
-
 What is UX?
 ===========
 

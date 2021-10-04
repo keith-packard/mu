@@ -80,11 +80,12 @@ Description: simple editor for beginner Python programmers
   * MicroPython on ESP8266/ESP32 boards
   * CircuitPython on Adafruit/Particle/Electronic Cats/SparkFun boards
   * Pygame Zero
+  * Snek on various Arduino-compatible devices
   * Web development (using Flask)
  .
- Some modes provide read-eval-print loop (REPL) support, either running on
- a connected CircuitPython or MicroPython device, or as a Jupyter-based
- iPython session in Python3 mode.
+ Some modes provide read-eval-print loop (REPL) support, either
+ running on a connected CircuitPython, MicroPython or Snek device, or
+ as a Jupyter-based iPython session in Python3 mode.
  .
  This package contains the Mu editor. Detailed online user documentation
  and tutorials for the Mu editor are available from within the editor,
@@ -111,11 +112,12 @@ Description: simple editor for beginner Python programmers (documentation)
   * MicroPython on ESP8266/ESP32 boards
   * CircuitPython on Adafruit/Particle/Electronic Cats/SparkFun boards
   * Pygame Zero
+  * Snek on various Arduino-compatible devices
   * Web development (using Flask)
  .
- Some modes provide read-eval-print loop (REPL) support, either running on
- a connected CircuitPython or MicroPython device, or as a Jupyter-based
- iPython session in Python3 mode.
+ Some modes provide read-eval-print loop (REPL) support, either
+ running on a connected CircuitPython, MicroPython or Snek device, or
+ as a Jupyter-based iPython session in Python3 mode.
  .
  This package contains the developer documentation for the Mu editor. Detailed
  user documentation and tutorials for the Mu editor are available from within

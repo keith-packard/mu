@@ -1,3 +1,17 @@
+mu-editor (1.1.0~beta6+dfgs1-1.1) unstable; urgency=medium
+
+  [ Nick Morrott ]
+  * d/manpages:
+    - Update author email address in custom manpage
+    - Improve formatting of custom manpage
+
+  [ Keith Packard ]
+  * New upstream beta version 1.1.0~beta6+dfsg1
+  * Add snek mode
+  * Disable virtual environment
+
+ -- Keith Packard <keithp@keithp.com>  Tue, 28 Sep 2021 12:18:59 -0700
+
 mu-editor (1.1.0~alpha2+dfsg1-1) experimental; urgency=medium
 
   * New upstream alpha version 1.1.0~alpha2+dfsg1  (Closes: #956253)

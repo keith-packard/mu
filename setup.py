@@ -76,6 +76,12 @@ install_requires = [
     "pywin32; sys_platform=='win32'",
 ]
 
+exclude = ("PyQt5", "QScintilla", "qtconsole", "PyQtChart")
+install_requires = [
+    requirement
+    for requirement in install_requires
+    if not requirement.startswith(exclude)
+]
 
 extras_require = {
     "tests": [

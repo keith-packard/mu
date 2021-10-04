@@ -1,0 +1,125 @@
+Description: use the packaged version of uflash.py
+ During repacking of the upstream source we remove the convenience copy of
+ uflash.py, which is provided on Debian in the python3-uflash package
+Author: Nick Morrott <nickm@debian.org>
+Forwarded: not-needed
+Last-Update: 2020-06-15
+---
+--- a/mu/modes/microbit.py
++++ b/mu/modes/microbit.py
+@@ -24,7 +24,8 @@
+ import semver
+ from tokenize import TokenError
+ from mu.logic import HOME_DIRECTORY, sniff_newline_convention
+-from mu.contrib import uflash, microfs
++import uflash
++from mu.contrib import microfs
+ from mu.modes.api import MICROBIT_APIS, SHARED_APIS
+ from mu.modes.base import MicroPythonMode, FileManager
+ from mu.interface.panes import CHARTS
+--- a/tests/modes/test_microbit.py
++++ b/tests/modes/test_microbit.py
+@@ -8,7 +8,7 @@
+ from mu.logic import HOME_DIRECTORY
+ from mu.modes.microbit import MicrobitMode, DeviceFlasher
+ from mu.modes.api import MICROBIT_APIS, SHARED_APIS
+-from mu.contrib import uflash
++import uflash
+ from unittest import mock
+ from tokenize import TokenError
+ 
+@@ -557,7 +557,7 @@
+     """
+     mock_flasher = mock.MagicMock()
+     mock_flasher_class = mock.MagicMock(return_value=mock_flasher)
+-    with mock.patch('mu.contrib.uflash.find_microbit',
++    with mock.patch('uflash.find_microbit',
+                     return_value='bar'),\
+             mock.patch('mu.contrib.microfs.get_serial'),\
+             mock.patch('mu.contrib.microfs.version',
+@@ -596,7 +596,7 @@
+     }
+     mock_flasher = mock.MagicMock()
+     mock_flasher_class = mock.MagicMock(return_value=mock_flasher)
+-    with mock.patch('mu.contrib.uflash.find_microbit',
++    with mock.patch('uflash.find_microbit',
+                     return_value='bar'),\
+             mock.patch('mu.contrib.microfs.get_serial'),\
+             mock.patch('mu.contrib.microfs.version',
+@@ -635,7 +635,7 @@
+     }
+     mock_flasher = mock.MagicMock()
+     mock_flasher_class = mock.MagicMock(return_value=mock_flasher)
+-    with mock.patch('mu.contrib.uflash.find_microbit',
++    with mock.patch('uflash.find_microbit',
+                     return_value=None),\
+             mock.patch('mu.contrib.microfs.get_serial'),\
+             mock.patch('mu.contrib.microfs.version',
+@@ -667,12 +667,12 @@
+     user has previously specified a path to the device, then the hex is saved
+     in the specified location.
+     """
+-    with mock.patch('mu.contrib.uflash.hexlify', return_value=''), \
+-            mock.patch('mu.contrib.uflash.embed_hex', return_value='foo'), \
+-            mock.patch('mu.contrib.uflash.find_microbit', return_value=None),\
++    with mock.patch('uflash.hexlify', return_value=''), \
++            mock.patch('uflash.embed_hex', return_value='foo'), \
++            mock.patch('uflash.find_microbit', return_value=None),\
+             mock.patch('mu.logic.os.path.exists', return_value=False),\
+             mock.patch('mu.logic.os.makedirs', return_value=None), \
+-            mock.patch('mu.contrib.uflash.save_hex', return_value=None) as s:
++            mock.patch('uflash.save_hex', return_value=None) as s:
+         view = mock.MagicMock()
+         view.current_tab.text = mock.MagicMock(return_value='')
+         view.show_message = mock.MagicMock()
+@@ -697,10 +697,10 @@
+     If no device is found and the user doesn't provide a path then ensure a
+     helpful status message is enacted.
+     """
+-    with mock.patch('mu.contrib.uflash.hexlify', return_value=''), \
+-            mock.patch('mu.contrib.uflash.embed_hex', return_value='foo'), \
+-            mock.patch('mu.contrib.uflash.find_microbit', return_value=None),\
+-            mock.patch('mu.contrib.uflash.save_hex', return_value=None) as s:
++    with mock.patch('uflash.hexlify', return_value=''), \
++            mock.patch('uflash.embed_hex', return_value='foo'), \
++            mock.patch('uflash.find_microbit', return_value=None),\
++            mock.patch('uflash.save_hex', return_value=None) as s:
+         view = mock.MagicMock()
+         view.get_microbit_path = mock.MagicMock(return_value=None)
+         view.current_tab.text = mock.MagicMock(return_value='')
+@@ -1204,7 +1204,7 @@
+     mock_open = mock.mock_open()
+     hex_extracted = 'RECOVERED'
+     with mock.patch('builtins.open', mock_open), \
+-            mock.patch('mu.contrib.uflash.extract_script',
++            mock.patch('uflash.extract_script',
+                        return_value=hex_extracted) as extract_script:
+         text, newline = mm.open_file('path_to_file.hex')
+     assert text == hex_extracted
+@@ -1222,7 +1222,7 @@
+     mm = MicrobitMode(editor, view)
+     mock_open = mock.mock_open()
+     with mock.patch('builtins.open', mock_open), \
+-            mock.patch('mu.contrib.uflash.extract_script',
++            mock.patch('uflash.extract_script',
+                        return_value='Should not be called') as extract_script:
+         text, newline = mm.open_file('path_to_file.py')
+     assert text is None
+@@ -1232,7 +1232,7 @@
+ 
+     mock_open.reset_mock()
+     with mock.patch('builtins.open', mock_open), \
+-            mock.patch('mu.contrib.uflash.extract_script',
++            mock.patch('uflash.extract_script',
+                        return_value='Should not be called') as extract_script:
+         text, newline = mm.open_file('file_no_extension')
+     assert text is None
+@@ -1252,7 +1252,7 @@
+     mock_open = mock.mock_open()
+     mock_extract = mock.MagicMock(side_effect=Exception(':('))
+     with mock.patch('builtins.open', mock_open), \
+-            mock.patch('mu.contrib.uflash.extract_script', mock_extract):
++            mock.patch('uflash.extract_script', mock_extract):
+         text, newline = mm.open_file('path_to_file.hex')
+     assert text is None
+     assert newline is None

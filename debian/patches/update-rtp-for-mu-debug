@@ -1,0 +1,23 @@
+Description: Update module search path for mu/mu-debug
+ When launched, mu-debug is unable to find the mu modules it depends
+ on because it is launched from a subdirectory of the mu module directory
+ structure. This patch updates the module search path to include the
+ root directory of the mu module structure.
+Author: Nick Morrott <knowledgejunkie@gmail.com>
+Forwarded: not-needed
+Reviewed-by: Nick Morrott <knowledgejunkie@gmail.com>
+Last-Update: 2019-06-17
+---
+--- a/mu/mu-debug.py
++++ b/mu/mu-debug.py
+@@ -1,6 +1,10 @@
+ #!/usr/bin/env python3
+ import os
+ import sys
++
++import os.path
++sys.path.insert(0, os.path.dirname(sys.path[0]))
++
+ from mu.app import debug
+ 
+ 

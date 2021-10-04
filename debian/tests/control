@@ -1,0 +1,2 @@
+Tests: mu-editor
+Depends: @builddeps@, @,

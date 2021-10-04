@@ -1,0 +1,44 @@
+Description: Remove embedded Youtube videos and replace with links
+Author: Nick Morrott <knowledgejunkie@gmail.com>
+Forwarded: not-needed
+Last-Update: 2018-12-21
+---
+--- a/docs/index.rst
++++ b/docs/index.rst
+@@ -86,14 +86,8 @@
+ wonderful support of the `Raspberry Pi Foundation <http://raspberrypi.org/>`_
+ the work needed to make such changes was done over the summer of 2017.
+ 
+-The following video of a talk given at `PyCon 2018 <https://us.pycon.org/2018/>`_
+-outlines the story of Mu:
+-
+-.. raw:: html
+-
+-    <div style="position: relative; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+-        <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/T5IAf5vGGSk?rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+-    </div>
++`This video <https://www.youtube.com/watch?v=T5IAf5vGGSk>`` of a talk given
++at `PyCon 2018 <https://us.pycon.org/2018/>` outlines the story of Mu.
+ 
+ How?
+ ----
+--- a/docs/user-experience.rst
++++ b/docs/user-experience.rst
+@@ -171,15 +171,8 @@
+ editor based on Carrie Anne's comments about the needs of teachers and learners
+ when it came to code editing.
+ 
+-Halfway into the keynote Carrie Anne talks about a development
+-environments for beginner programmers in Python:
+-
+-.. raw:: html
+-
+-    <div style="position: relative; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+-        <iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/_gU7sfTrz4c?rel=0&amp;start=2002" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+-    </div>
+-
++Halfway into the keynote Carrie Anne talks about a development environment for
++beginner programmers in Python.
+ 
+ She starts by explaining the problems with online editors. Often they require
+ users to sign up, thus excluding a large number of children who, for legal

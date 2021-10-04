@@ -1,24 +1,164 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: mu
 Source: https://github.com/mu-editor/mu
+Upstream-Contact: Nicholas H.Tollervey <ntoll@ntoll.org>
+Upstream-Name: mu
+Files-Excluded:
+ .appveyor.yml
+ .gitignore
+ .readthedocs.yml
+ .travis.yml
+ force-rechecks.txt
+ win_installer.py
+ debian/*
+ docs/beautifully_useless.jpg
+ docs/circuit_playground.jpg
+ docs/python.png
+ mu/contrib/uflash.py
+ mu/resources/fonts/*
+ mu/resources/pygamezero/cat1.png
+ mu/resources/pygamezero/cat2.png
+ mu/resources/pygamezero/cat3.png
+ mu/resources/pygamezero/cat4.png
+ mu/resources/pygamezero/eep.wav
+ mu/resources/pygamezero/meow1.wav
+ mu/resources/pygamezero/meow2.wav
+ mu/resources/pygamezero/meow3.wav
+ mu/resources/pygamezero/meow4.wav
+ mu/resources/pygamezero/splat.png
+ mu/resources/pygamezero/splat.wav
+ package/*
+Comment: We repack the upstream mu-editor source for a couple of reasons:
+ 1. We remove upstream git, CI and Windows configuration files.
+ .
+ 2. We remove the upstream debian/ directory.
+ .
+ 3. The following images are included in the upstream source (documented in
+ docs/copyright.rst) but are not DFSG-compatible due to the following reasons:
+ .
+ - docs/beautifully_useless.jpg - prohibits commercial use
+ - docs/circuit_playground.jpg - released under CC BY-NC-SA 2.0 license
+ - docs/python.png - restricted commercial use
+ .
+ 4. We remove uflash.py which is packaged separately (python3-uflash).
+ Note that this file also includes a non-DFSG-compatible string representation
+ of the compiled MicroPython firmware for the micro:bit single board computer.
+ .
+ 5. Although released under a DFSG-compatible license, the compiled
+ Source Code Pro font files are removed from the upstream source as the
+ toolchain required to build them is not yet available in Debian (#762252)
+ .
+ 6. We remove various pygamezero media assets due to unknown authorship/licensing
+ .
+ 7. We remove OSX and Windows packaging/installation files
 
 Files: *
-Copyright: 2015 Nicholas H.Tollervey <ntoll@ntoll.org>
+Copyright: 2015-2019, Nicholas H.Tollervey and others
+License: GPL-3.0+
+
+Files: .coveragerc
+       *.rst
+       *.txt
+       make.*
+       Makefile
+       MANIFEST.in
+       run.py
+       setup.py
+       conf/*
+       docs/*
+       mu/__init__.py
+       mu/__main__.py
+       mu/mu-debug.py
+       mu/contrib/*
+       mu/interface/__init__.py
+       mu/locale/de_DE/*
+       mu/locale/ja/*
+       mu/locale/pt_BR/*
+       mu/locale/pt_PT/*
+       mu/locale/sv/*
+       mu/modes/api/__init__.py
+       mu/modes/__init__.py
+       mu/resources/css/*
+       mu/resources/images/*
+       tests/*
+       utils/*
+Copyright: *No copyright*
+License: GPL-3.0+
+Comment:
+ Using license as found in LICENSE file.
+
+Files: docs/pygame.png
+Copyright: Public Domain
+License: public-domain
+ This module has been placed in the public domain.
+Comment: Details taken from docs/copyright.rst
+ .
+ pygame.png
+ ++++++++++
+ .
+ Permission was sought and obtained from René Dudfield, the current core
+ maintainer of `Pygame <https://pygame.org>`_::
+ .
+     public domain
+ .
+     Go for it! Feel free to do whatever weird(and not weird) things you
+     like with it.
+ .
+     It's a modification (by me) of a logo by Gareth Noyce, who also put
+     the logo files in public domain.
+ .
+     Gareth Noyce said of the logo files:
+     They're public domain but I'd like attribution if they're used
+     anywhere.  Just a "logo by Gareth Noyce" would do, but I won't be
+     complaining if people forget. :)'
+
+Files: conf/mu.appdata.xml
+Copyright: Nicholas H.Tollervey <ntoll@ntoll.org>
+License: CC0-1.0
+
+Files: mu/locale/fr/LC_MESSAGES/mu.po
+Copyright: Gerald Quintana <gerald.quintana@gmail.com>, 2018
+License: GPL-3.0+
+Comment:
+ Using license as found in LICENSE file.
+
+Files: mu/locale/pl/LC_MESSAGES/mu.po
+Copyright: PyPolska, Filip Kłębczyk <fklebczyk@gmail.com>, 2018
+License: GPL-3.0+
+Comment:
+ Using license as found in LICENSE file.
+
+Files: mu/locale/sk_SK/LC_MESSAGES/mu.po
+Copyright: Miroslav Biňas <mirek@cnl.sk>, 2019
+License: GPL-3.0+
+Comment:
+ Using license as found in LICENSE file.
+
+Files: mu/locale/vi/LC_MESSAGES/mu.po
+Copyright: Doãn Minh Đăng <minhdang@linux.com>, 2018
+License: GPL-3.0+
+Comment:
+ Using license as found in LICENSE file.
+
+Files: mu/locale/zh_CN/LC_MESSAGES/mu.po
+Copyright: 管宁川John <Guan.NingChuan@Gmail.Com>, 2018
+License: GPL-3.0+
+Comment:
+ Using license as found in LICENSE file.
+
+Files: mu/resources/pygamezero/alien.png
+       mu/resources/pygamezero/alien_hurt.png
+Copyright: kenny.nl
+License: CC0-1.0
+Comment: Licensing information taken from pgzero source package
+
+Files: debian/*
+Copyright: 2020, Nick Morrott <nickm@debian.org>
 License: GPL-3.0+
 
 License: GPL-3.0+
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- .
- This package is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- .
- You should have received a copy of the GNU General Public License
- along with this program. If not, see <https://www.gnu.org/licenses/>.
- .
- On Debian systems, the complete text of the GNU General
- Public License version 3 can be found in "/usr/share/common-licenses/GPL-3".
+ On Debian systems the full text of the GPL-3 can be found in
+ /usr/share/common-licenses/GPL-3
+
+License: CC0-1.0
+ On Debian systems the full text of the CC0-1.0 license can be found in
+ /usr/share/common-licenses/CC0-1.0

@@ -1,0 +1,52 @@
+% MU-EDITOR(1) __VERSION__ | User Commands
+% 
+% July 2020
+
+# NAME
+
+**mu-editor** - a simple Python code editor
+
+# SYNOPSIS
+
+| **mu-editor** \[_file_\]
+
+# ARGUMENTS
+
+_file_
+:   the source file to edit
+
+# DESCRIPTION
+
+**mu-editor** is a simple code editor for beginner programmers based on extensive feedback from teachers and learners. Having said that, mu-editor is for anyone who wants to use a simple "no frills" editor.
+
+**mu-editor** is a modal editor with modes for:
+
+ - Python 3 (including a graphical debugger)
+ - MicroPython on the BBC micro:bit and ESP8266/ESP32 boards
+ - CircuitPython on Adafruit/Particle/Electronic Cats/SparkFun boards
+ - PyGame Zero
+ - Web development (using Flask)
+
+Some modes make available a read–eval–print loop (REPL). This is either by running on a connected CircuitPython/MicroPython device, or as a Jupyter-based iPython session (Python 3).
+
+# REPORTING BUGS
+
+Upstream bug tracker: https://github.com/mu-editor/mu/issues
+
+# COPYRIGHT
+
+Copyright 2015 Nicholas H.Tollervey <ntoll@ntoll.org>
+
+# AUTHOR
+
+This manual page is based on the Mu documentation. It was created by Nick Morrott <nickm@debian.org> for the Debian GNU/Linux system, but may be used by others
+
+# SEE ALSO
+
+**uflash**(1)
+
+Project homepage: https://codewith.mu/
+
+Projects using Mu: https://madewith.mu/
+
+Online developer documentation: https://mu.readthedocs.io/

@@ -1,0 +1,7 @@
+version=4
+
+opts="\
+dversionmangle=s/\+dfsg\d*$//, repacksuffix=+dfsg1,\
+uversionmangle=s/(\d)[.-]?(alpha|beta|rc)[.]?(\d*)$/$1~$2$3/,\
+filenamemangle=s/.+\/v?@ANY_VERSION@\.tar\.gz/@PACKAGE@-$1\.tar\.gz/" \
+    https://github.com/mu-editor/mu/tags .*/archive/v?@ANY_VERSION@@ARCHIVE_EXT@

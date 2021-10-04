@@ -1,7 +1,48 @@
 #!/usr/bin/make -f
 
-export PYBUILD_NAME=mu
+include /usr/share/dpkg/pkg-info.mk
+
+export DH_ALWAYS_EXCLUDE=__pycache__
+
+export DH_VERBOSE=1
+export PYBUILD_VERBOSE=1
+
+export LC_ALL=C.UTF-8
+
+export PYBUILD_NAME=mu-editor
+export PYBUILD_DESTDIR_python3=debian/$(PYBUILD_NAME)
+
+export PYBUILD_TEST_PYTEST = 1
+export PYBUILD_BEFORE_TEST = mkdir -p {build_dir}/mu/resources/fonts; \
+                             cp /usr/share/fonts/truetype/inconsolata/Inconsolata.otf \
+                             {build_dir}/mu/resources/fonts/Inconsolata.otf
+export PYBUILD_TEST_ARGS   = --random-order
+export PYBUILD_AFTER_TEST  = rm -rf {build_dir}/mu/resources/fonts
+
+export PYBUILD_INSTALL_ARGS=--install-lib=/usr/share/mu-editor/ --install-scripts=/usr/share/mu-editor/
+
 %:
-	dh $@ --with python3 --buildsystem=pybuild
+	dh $@ --with python3,sphinxdoc --buildsystem=pybuild
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf docs/html
+
+override_dh_auto_build:
+	dh_auto_build
+	# build custom manpage
+	@echo DEB_VERSION_UPSTREAM $(DEB_VERSION_UPSTREAM)
+	sed -e "s/__VERSION__/$(DEB_VERSION_UPSTREAM)/g" \
+				< debian/mu-editor.1.md.in > debian/mu-editor.1.md
+	pandoc debian/mu-editor.1.md -s -f markdown -t man -o debian/mu-editor.1
+	# build documentation
+	PYTHONPATH=. http_proxy='127.0.0.1:9' https_proxy='127.0.0.1:9' python3 -m sphinx -N -bhtml docs/ docs/html
 
 override_dh_auto_test:
+	true
+
+ifeq ($(DEB_HOST_ARCH_OS),linux)
+override_dh_installudev:
+	# Honour upstream's desired priority
+	dh_installudev --priority=90
+endif

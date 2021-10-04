@@ -1,0 +1,19 @@
+Document: mu-editor
+Title: mu-editor
+Author: Nicholas H.Tollervey <ntoll@ntoll.org>
+Abstract: developer documentation for the Mu editor
+Section: Programming/Python
+
+Format: HTML
+Index: /usr/share/doc/mu-editor/html/index.html
+Files: /usr/share/doc/mu-editor/html/*.html
+       /usr/share/doc/mu-editor/html/design/*.html
+       /usr/share/doc/mu-editor/html/_modules/*.html
+       /usr/share/doc/mu-editor/html/_modules/mu/*.html
+       /usr/share/doc/mu-editor/html/_modules/mu/debugger/*.html
+       /usr/share/doc/mu-editor/html/_modules/mu/interface/*.html
+       /usr/share/doc/mu-editor/html/_modules/mu/modes/*.html
+
+Format: Text
+Files: /usr/share/doc/mu-editor/rst/*.txt
+       /usr/share/doc/mu-editor/rst/design/*.txt

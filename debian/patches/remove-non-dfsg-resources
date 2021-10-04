@@ -1,0 +1,23 @@
+Description: Remove references to deleted non-DFSG-compatible resources
+ We remove various bundled media assets during repacking due to unknown
+ provenance and licensing, so do not attempt to access them
+Author: Nick Morrott <nickm@debian.org>
+Forwarded: not-needed
+Last-Update: 2020-06-15
+---
+--- a/mu/logic.py
++++ b/mu/logic.py
+@@ -70,11 +70,9 @@
+ # Port number for debugger.
+ DEBUGGER_PORT = 31415
+ # Default images to copy over for use in PyGameZero demo apps.
+-DEFAULT_IMAGES = ['alien.png', 'alien_hurt.png', 'cat1.png', 'cat2.png',
+-                  'cat3.png', 'cat4.png', 'splat.png']
++DEFAULT_IMAGES = ['alien.png', 'alien_hurt.png']
+ # Default sound effects to copy over for use in PyGameZero demo apps.
+-DEFAULT_SOUNDS = ['eep.wav', 'meow1.wav', 'meow2.wav', 'meow3.wav',
+-                  'meow4.wav', 'splat.wav', ]
++DEFAULT_SOUNDS = []
+ MOTD = [  # Candidate phrases for the message of the day (MOTD).
+     _('Hello, World!'),
+     _("This editor is free software written in Python. You can modify it, "

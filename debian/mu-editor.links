@@ -1,0 +1,10 @@
+usr/share/mu-editor/mu-editor                           usr/bin/mu-editor
+
+# Restore resources removed during source repacking with packaged versions
+usr/share/fonts/truetype/inconsolata/Inconsolata.otf    usr/share/mu-editor/mu/resources/fonts/Inconsolata.otf
+
+# Replace convenience copy of normalize.css with package node-normalize.css
+usr/share/javascript/normalize.css/normalize.css        usr/share/mu-editor/mu/resources/web/static/css/normalize.css
+
+# Replace convenience copy of skeleton.css with package libjs-skeleton
+usr/share/javascript/skeleton/skeleton.css              usr/share/mu-editor/mu/resources/web/static/css/skeleton.css

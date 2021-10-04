@@ -1,0 +1,11 @@
+soften-dependency-versions
+remove-problematic-runtime-dependencies
+replace-sourcecodepro-font-with-inconsolata
+use-system-uflash
+disable-buttons-in-alabaster-sphinx-theme
+replace-embedded-youtube-videos-with-links
+remove-non-dfsg-images-from-docs
+remove-non-dfsg-resources
+update-rtp-for-mu-debug
+use-https-urls-in-appstream-data
+adjust-black-code-to-support-version-18

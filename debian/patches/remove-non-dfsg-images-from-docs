@@ -1,0 +1,103 @@
+Description: Remove references to non-DFSG images removed from source
+Author: Nick Morrott <nickm@debian.org>
+Forwarded: not-needed
+Last-Update: 2020-06-15
+---
+--- a/docs/copyright.rst
++++ b/docs/copyright.rst
+@@ -15,38 +15,6 @@
+ All images used in Mu's developer documentation fall under Mu's copyright
+ status, except for the following images sourced from third parties:
+ 
+-beautifully_useless.jpg
+-+++++++++++++++++++++++
+-
+-Permission was sought and obtained from Katerina Kamprani (the creator of
+-`the uncomfortable <http://theuncomfortable.com>`_)::
+-
+-    Hello Nicholas, 
+-
+-    Thank you very much for asking and for your kind words. 
+-    As long as there is no commercial use of the image, and since you
+-    mention my project, it is absolutely fine!
+-    I am very happy the images help to prove a point!
+-
+-    Many greetings from Athens, Greece,
+-    Katerina
+-
+-circuit_playground.jpg
+-++++++++++++++++++++++
+-
+-Permission was sought and obtained from
+-`Adafruit Industries <https://adafruit.com/>`_, the source of the
+-image::
+-
+-    yup! 100%! please use!
+-
+-    > Hi Folks,
+-    >
+-    > Is it OK to use a picture of a Circuit Playground Express taken
+-    > from your website in the developer docs for Mu. Like this..?
+-    >
+-    > https://mu.readthedocs.io/en/latest/modes.html#adafruit-mode
+-
+ pygame.png
+ ++++++++++
+ 
+@@ -66,21 +34,3 @@
+     anywhere.  Just a "logo by Gareth Noyce" would do, but I won't be
+     complaining if people forget. :)'
+ 
+-python.png
+-++++++++++
+-
+-This is a copy of the Python logo owned by the
+-`Python Software Foundation <https://python.org/psf>`_
+-(PSF). Mu was originally written by a PSF Fellow on behalf of the PSF as part
+-of the PSF's contribution to the BBC's micro:bit project. Furthermore, the PSF
+-say of the `use of the Python logo <https://www.python.org/community/logos/>`_):
+-
+-    "Projects and companies that use Python are encouraged to incorporate
+-    the Python logo on their websites, brochures, packaging, and elsewhere
+-    to indicate suitability for use with Python or implementation in
+-    Python. Use of the "two snakes" logo element alone, without the
+-    accompanying wordmark is permitted on the same terms as the combined
+-    logo.
+-
+-    In general, we want the logo to be used as widely as possible to
+-    indicate use of Python or suitability for Python."
+--- a/docs/modes.rst
++++ b/docs/modes.rst
+@@ -28,8 +28,6 @@
+ Adafruit Mode
+ +++++++++++++
+ 
+-.. image:: circuit_playground.jpg
+-
+ `Adafruit <http://adafruit.com/>`_ make extraordinarily awesome boards for
+ embedded development. Many of these boards run Adafruit's own flavour of 
+ `MicroPython <http://micropython.org/>`_ called
+@@ -83,8 +81,6 @@
+ Standard Python3 Mode
+ +++++++++++++++++++++
+ 
+-.. image:: python.png
+-
+ This mode is for creating simple Python 3 programs. As with the other modes,
+ there is a REPL for live programming, but in this case it is an iPython based
+ REPL that uses `project Jupyter <http://jupyter.org/>`_. As with other Jupyter
+--- a/docs/user-experience.rst
++++ b/docs/user-experience.rst
+@@ -28,12 +28,6 @@
+ software looks beautiful but is difficult to use. With Mu, we aim to put
+ usability and a great experience before looks.
+ 
+-This beautiful yet inconvenient wine glass from
+-`the uncomfortable <https://www.theuncomfortable.com/>`_ illustrates what I
+-mean (used with permission, see :doc:`copyright`).
+-
+-.. image:: beautifully_useless.jpg 
+-
+ What is UX?
+ ===========
+ 

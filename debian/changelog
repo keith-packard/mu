@@ -1,31 +1,88 @@
-mu (1.0.0~beta8) stretch; urgency=medium
+mu-editor (1.1.0~alpha2+dfsg1-1) experimental; urgency=medium
 
-  * Repackage
+  * New upstream alpha version 1.1.0~alpha2+dfsg1  (Closes: #956253)
+  * d/control:
+    - Refresh (build) dependencies
+    - Refresh long descriptions with details of new modes
+  * d/copyright:
+    - Refresh Files-Excluded to maintain DFSG compatibility
+    - Refresh Files stanzas for new upstream files
+    - Bump upstream years of copyright
+    - Bump Debian years of copyright
+  * d/gbp.conf:
+    - Use debian/experimental for 1.1.x releases
+  * d/lintian-override:
+    - Update capitalisation in comment (lintian)
+  * d/mu-editor.links:
+    - Replace convenience copies of normalize.css and skeleton.css
+  * d/patches:
+    - Refresh patches
+    - Add patch adjust-black-code-to-support-version-18
+  * d/watch:
+    - Add uversionmangle handling for upstream alpha/beta/rc releases
 
- -- Serge Schneider <serge@raspberrypi.org>  Tue, 26 Sep 2017 17:39:30 +0100
+ -- Nick Morrott <nickm@debian.org>  Thu, 30 Jul 2020 16:37:01 +0100
 
-mu (0.9.13-1) unstable; urgency=low
+mu-editor (1.0.3+dfsg-1) unstable; urgency=medium
 
-  * Add ability to change default Python directory in the settings file. Thanks to Zander Brown for the contribution. See #179.
+  * New upstream version 1.0.3+dfsg
+  * d/control:
+    - Declare compliance with Debian Policy 4.5.0
+    - Bump debhelper compatibility level to 13
+    - Add Suggests on python3-gpiozero (arch:any since buster)
+  * d/patches:
+    - Refresh patch soften-dependency-versions
+    - Drop patch test_app_icon_as_string (applied upstream)
 
- -- Nicholas Tollervey <ntoll@ntoll.org>  Sun, 06 Oct 2016 11:32:58 +0000
+ -- Nick Morrott <nickm@debian.org>  Sat, 13 Jun 2020 06:12:46 +0100
 
-mu (0.9.12-1) unstable; urgency=low
+mu-editor (1.0.2+dfsg-4) unstable; urgency=medium
 
-  * Change the default Python directory from ``~/python`` to ``~/mu_code``. This fixes issue #126.
-  * Add instructions for installing PyQt5 and QScintilla on Mac OS.
-  * Update to latest version of uFlash.
-  * Add highlighting of search mathes.
-  * Check if the script produced is > 8k.
-  * Use a settings file local to the Mu executable if available.
-  * Fix bug with highlighting code errors in Windows.
-  * Check to overwrite an existing file on the micro:bit FS.
-  * Start changelog
+  [ Ondřej Nový ]
+  * Use debhelper-compat instead of debian/compat.
+  * Bump Standards-Version to 4.4.1.
 
- -- Nicholas Tollervey <ntoll@ntoll.org>  Sun, 23 Oct 2016 17:22:35 +0000
+  [ Nick Morrott ]
+  * d/control:
+    - Uploaders: use my new Debian address
+    - Expand definition of "REPL" in long description
+    - Mark mu-editor-doc as M-A: foreign
+    - Add Rules-Requires-Root field
+    - Depend on default python3 rather than python3-all
+  * d/tests/mu-editor:
+    - Run autopkgtests against default python3. Thanks to
+      Steve Langasek for the patch (Closes: #943449)
+  * d/patches:
+    - add use-https-urls-in-appstream-data
 
-mu (0.1-1) unstable; urgency=low
+ -- Nick Morrott <nickm@debian.org>  Mon, 04 Nov 2019 12:30:14 +0000
 
-  * Initial packaging
+mu-editor (1.0.2+dfsg-3) unstable; urgency=medium
 
- -- Alex Bradbury <asb@asbradbury.org>  Fri, 25 Mar 2016 17:26:35 +0000
+  * d/patches: add update-rtp-for-mu-debug (Closes: #930270)
+    - adapted from patch from Peter Green
+
+ -- Nick Morrott <knowledgejunkie@gmail.com>  Tue, 18 Jun 2019 01:34:00 +0100
+
+mu-editor (1.0.2+dfsg-2) unstable; urgency=medium
+
+  * d/gbp.conf: use pristine-tar
+  * d/patches: add test_app_icon_as_string (Closes: #923402)
+
+ -- Nick Morrott <knowledgejunkie@gmail.com>  Thu, 28 Feb 2019 02:43:16 +0000
+
+mu-editor (1.0.2+dfsg-1) unstable; urgency=medium
+
+  * New upstream version 1.0.2+dfsg
+  * d/control: refresh (build) dependencies
+  * d/{control,compat}: bump debhelper compatibility level to 12
+  * d/patches: refresh patches (Closes: #919260)
+  * d/{rules,tests/mu-editor}: restore test randomisation
+
+ -- Nick Morrott <knowledgejunkie@gmail.com>  Wed, 16 Jan 2019 03:11:03 +0000
+
+mu-editor (1.0.1+dfsg-1) unstable; urgency=medium
+
+  * Initial release. (Closes: #901461)
+
+ -- Nick Morrott <knowledgejunkie@gmail.com>  Mon, 31 Dec 2018 21:15:58 +0100

@@ -941,7 +941,7 @@ class Editor(QObject):
             self._view.zoom_position = old_session["zoom_level"]
             self._view.set_zoom()
 
-        if "venv_path" in old_session:
+        if venv and "venv_path" in old_session:
             venv.relocate(old_session["venv_path"])
             venv.ensure()
 
@@ -1452,7 +1452,9 @@ class Editor(QObject):
             "pa_token": self.pa_token,
             "pa_instance": self.pa_instance,
         }
-        baseline_packages, user_packages = venv.installed_packages()
+        user_packages = []
+        if venv:
+            baseline_packages, user_packages = venv.installed_packages()
         packages = user_packages
         with open(LOG_FILE, "r", encoding="utf8") as logfile:
             new_settings = self._view.show_admin(

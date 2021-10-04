@@ -64,11 +64,11 @@ install_requires = [
     # virtualenv vendors pip, we need at least pip v19.3 to install some
     # rust based dependencies. virtualenv >=v20 is required for the --symlinks
     # flag needed by AppImage, and it packs pip v20.0.2.
-    "virtualenv>=20.0.0",
+    #"virtualenv>=20.0.0",
     #
     # Needed for packaging
     #
-    "wheel",
+    #"wheel",
     # Needed to deploy from web mode
     "requests>=2.0.0",
     #

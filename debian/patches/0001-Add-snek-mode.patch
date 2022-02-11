@@ -93,14 +93,14 @@ Signed-off-by: Keith Packard <keithp@keithp.com>
  mu/interface/panes.py            | 162 ++++++++++++
  mu/modes/__init__.py             |   2 +
  mu/modes/api/__init__.py         |   2 +
- mu/modes/api/snek.py             | 154 ++++++++++++
- mu/modes/snek.py                 | 527 +++++++++++++++++++++++++++++++++++++++
+ mu/modes/api/snek.py             | 154 +++++++++++
+ mu/modes/snek.py                 | 550 +++++++++++++++++++++++++++++++++++++++
  mu/resources/images/getflash.svg | 121 +++++++++
- mu/resources/images/snek.svg     | 184 ++++++++++++++
- tests/interface/test_main.py     |  43 ++++
- tests/interface/test_panes.py    | 449 +++++++++++++++++++++++++++++++++
- tests/modes/test_snek.py         | 359 ++++++++++++++++++++++++++
- 13 files changed, 2017 insertions(+)
+ mu/resources/images/snek.svg     | 184 +++++++++++++
+ tests/interface/test_main.py     |  43 +++
+ tests/interface/test_panes.py    | 449 ++++++++++++++++++++++++++++++++
+ tests/modes/test_snek.py         | 359 +++++++++++++++++++++++++
+ 13 files changed, 2040 insertions(+)
  create mode 100644 mu/modes/api/snek.py
  create mode 100644 mu/modes/snek.py
  create mode 100644 mu/resources/images/getflash.svg
@@ -140,7 +140,7 @@ index af3b5d2..979dff4 100644
          "microbit": MicrobitMode(editor, view),
          "esp": ESPMode(editor, view),
 diff --git a/mu/interface/main.py b/mu/interface/main.py
-index ab3436b..b06b32d 100644
+index 0e31c80..92e9d8f 100644
 --- a/mu/interface/main.py
 +++ b/mu/interface/main.py
 @@ -61,6 +61,7 @@ from mu.interface.panes import (
@@ -169,7 +169,7 @@ index ab3436b..b06b32d 100644
          """
          Adds a plotter that reads data from a serial connection.
 diff --git a/mu/interface/panes.py b/mu/interface/panes.py
-index 1f33eb5..f818619 100644
+index c148267..346b5aa 100644
 --- a/mu/interface/panes.py
 +++ b/mu/interface/panes.py
 @@ -475,6 +475,168 @@ class MicroPythonREPLPane(QTextEdit):
@@ -543,10 +543,10 @@ index 0000000..37fe9e6
 +]
 diff --git a/mu/modes/snek.py b/mu/modes/snek.py
 new file mode 100644
-index 0000000..9b2c3c7
+index 0000000..25af5fd
 --- /dev/null
 +++ b/mu/modes/snek.py
-@@ -0,0 +1,527 @@
+@@ -0,0 +1,550 @@
 +"""
 +A mode for working with Snek boards. https://keithp.com/snek
 +
@@ -574,6 +574,7 @@ index 0000000..9b2c3c7
 +
 +logger = logging.getLogger(__name__)
 +
++snek_bauds = [115200, 57600]
 +
 +class SnekREPLConnection(REPLConnection):
 +    """
@@ -597,6 +598,7 @@ index 0000000..9b2c3c7
 +        self.ready = True
 +        self.pending = b""
 +        self.wait_for_data = wait_for_data
++        self.got_dc4 = False
 +
 +    def set_ready(self):
 +        """
@@ -611,14 +613,30 @@ index 0000000..9b2c3c7
 +        self.ready = True
 +
 +        # If the device will reset on open, wait for it to send
-+        # something before talking to it. Don't wait more than two
-+        # seconds, in case it doesn't actually reset
++        # something before talking to it. Don't wait more than one
++        # second, in case it doesn't actually reset
 +
 +        if self.wait_for_data:
 +            self.ready = False
 +            ready_func = lambda: self.set_ready()
-+            QTimer.singleShot(2000, ready_func)
++            QTimer.singleShot(1000, ready_func)
 +
++        if self.flowcontrol:
++            for self._baudrate in snek_bauds:
++                logger.info("try baudrate %d" % self._baudrate)
++                self.serial.setBaudRate(self._baudrate)
++                self.serial.write(b"\x14\n")
++                self.serial.waitForReadyRead(250)
++                if self.got_dc4:
++                    logger.info("autobaud response detected")
++                    break
++                logger.info("no autobaud response")
++            else:
++                self._baudrate = snek_bauds[0]
++                logger.info("using default baudrate %d" % self._baudrate)
++                self.serial.setBaudRate(self._baudrate)
++                
++            
 +    # Flow control: every 'chunk' bytes, send an ENQ character and
 +    # block until the matching ACK is received
 +
@@ -636,10 +654,15 @@ index 0000000..9b2c3c7
 +    def _on_serial_read(self):
 +        data = bytes(self.serial.readAll())
 +
-+        # when we receive and ACK, restart transmission
++        # when we receive an ACK, restart transmission
 +        if b"\x06" in data:
 +            self.recv_ack()
 +            data = data.replace(b"\x06", b"")
++
++        # we receive DC4 during startup for autobaud
++        if b"\x14" in data:
++            self.got_dc4 = True
++            data = data.replace(b"\x14", b"")
 +
 +        self.data_received.emit(data)
 +
@@ -1009,7 +1032,7 @@ index 0000000..9b2c3c7
 +        """
 +        device = self.editor.current_device
 +        if device:
-+            baudrate = 115200
++            baudrate = 57600
 +            try:
 +                if not self.connection:
 +                    flowcontrol = not (
@@ -1392,10 +1415,10 @@ index 0000000..80d43dd
 +  </g>
 +</svg>
 diff --git a/tests/interface/test_main.py b/tests/interface/test_main.py
-index dd0ff57..4f15788 100644
+index 05a6fd9..8602e9e 100644
 --- a/tests/interface/test_main.py
 +++ b/tests/interface/test_main.py
-@@ -1099,6 +1099,49 @@ def test_Window_add_micropython_plotter():
+@@ -1113,6 +1113,49 @@ def test_Window_add_micropython_plotter():
      w.add_plotter.assert_called_once_with(mock_plotter, "MicroPython Plotter")
  
  
@@ -1446,7 +1469,7 @@ index dd0ff57..4f15788 100644
      """
      Ensure the plotter is created correctly when in Python 3 mode.
 diff --git a/tests/interface/test_panes.py b/tests/interface/test_panes.py
-index 0e9bff5..fe9ff77 100644
+index 2cf0b17..406ad7c 100644
 --- a/tests/interface/test_panes.py
 +++ b/tests/interface/test_panes.py
 @@ -935,6 +935,455 @@ def test_MicroPythonREPLPane_set_zoom():

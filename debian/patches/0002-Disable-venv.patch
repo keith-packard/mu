@@ -25,10 +25,10 @@ index 979dff4..5b8fc03 100644
          except Exception as ex:
              # Catch all exceptions just in case.
 diff --git a/mu/logic.py b/mu/logic.py
-index 3abb3f7..7a3114b 100644
+index 1348c9c..3e27e40 100644
 --- a/mu/logic.py
 +++ b/mu/logic.py
-@@ -926,7 +926,7 @@ class Editor(QObject):
+@@ -929,7 +929,7 @@ class Editor(QObject):
              self._view.zoom_position = old_session["zoom_level"]
              self._view.set_zoom()
  
@@ -37,7 +37,7 @@ index 3abb3f7..7a3114b 100644
              venv.relocate(old_session["venv_path"])
              venv.ensure()
  
-@@ -1420,7 +1420,9 @@ class Editor(QObject):
+@@ -1426,7 +1426,9 @@ class Editor(QObject):
              "microbit_runtime": self.microbit_runtime,
              "locale": self.user_locale,
          }
@@ -49,10 +49,10 @@ index 3abb3f7..7a3114b 100644
          with open(LOG_FILE, "r", encoding="utf8") as logfile:
              new_settings = self._view.show_admin(
 diff --git a/mu/virtual_environment.py b/mu/virtual_environment.py
-index 22d3f18..edd4171 100644
+index 907f22a..0ea4509 100644
 --- a/mu/virtual_environment.py
 +++ b/mu/virtual_environment.py
-@@ -932,4 +932,5 @@ class VirtualEnvironment(object):
+@@ -937,4 +937,5 @@ class VirtualEnvironment(object):
  # Create a singleton virtual environment to be used throughout
  # the application
  #
@@ -60,10 +60,10 @@ index 22d3f18..edd4171 100644
 +# venv = VirtualEnvironment()
 +venv = None
 diff --git a/setup.py b/setup.py
-index 93f99b1..1d9178d 100644
+index d088c6c..68b3da4 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -117,6 +117,7 @@ setup(
+@@ -119,6 +119,7 @@ setup(
          "mu.interface",
          "mu.modes.api",
          "mu.wheels",

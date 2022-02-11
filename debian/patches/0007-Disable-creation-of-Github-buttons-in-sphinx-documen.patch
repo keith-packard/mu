@@ -7,7 +7,7 @@ Subject: Disable creation of Github buttons in sphinx documentation
  1 file changed, 2 insertions(+)
 
 diff --git a/docs/conf.py b/docs/conf.py
-index 629757b..b1a82b1 100644
+index 2003e49..fb7f402 100644
 --- a/docs/conf.py
 +++ b/docs/conf.py
 @@ -97,6 +97,8 @@ html_theme_options = {

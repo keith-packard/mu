@@ -49,7 +49,7 @@ index 1348c9c..3e27e40 100644
          with open(LOG_FILE, "r", encoding="utf8") as logfile:
              new_settings = self._view.show_admin(
 diff --git a/mu/virtual_environment.py b/mu/virtual_environment.py
-index 907f22a..0ea4509 100644
+index dad7eb6..4f9d4ab 100644
 --- a/mu/virtual_environment.py
 +++ b/mu/virtual_environment.py
 @@ -937,4 +937,5 @@ class VirtualEnvironment(object):
@@ -60,7 +60,7 @@ index 907f22a..0ea4509 100644
 +# venv = VirtualEnvironment()
 +venv = None
 diff --git a/setup.py b/setup.py
-index d088c6c..68b3da4 100644
+index 6f3fac3..cbc86fa 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -119,6 +119,7 @@ setup(

@@ -9,7 +9,7 @@ version we've managed to load and adapt on the fly
  1 file changed, 21 insertions(+), 6 deletions(-)
 
 diff --git a/mu/logic.py b/mu/logic.py
-index dbce79b..150f8d2 100644
+index dbce79b..704aa57 100644
 --- a/mu/logic.py
 +++ b/mu/logic.py
 @@ -1794,17 +1794,32 @@ class Editor(QObject):
@@ -29,24 +29,24 @@ index dbce79b..150f8d2 100644
 -            )
 -            tidy_code = format_str(source_code, mode=filemode)
 +            try:
-+                logger.info('using old style filemode')
++                logger.info("using old style filemode")
 +                filemode = FileMode(FileMode.PYTHON36)
 +            except AttributeError:
-+                logger.info('using new style filemode')
++                logger.info("using new style filemode")
 +                from black import TargetVersion
++
 +                filemode = FileMode(
 +                    target_versions={TargetVersion.PY36},
 +                    line_length=MAX_LINE_LENGTH,
 +                )
 +            try:
-+                logger.info('using old style format_str')
++                logger.info("using old style format_str")
 +                tidy_code = format_str(
 +                    source_code, mode=filemode, line_length=88
 +                )
 +            except TypeError:
-+                logger.info('using new style format_str')
++                logger.info("using new style format_str")
 +                tidy_code = format_str(source_code, mode=filemode)
-+                
 +
              # The following bypasses tab.setText which resets the undo history.
              # Doing it this way means the user can use CTRL-Z to undo the

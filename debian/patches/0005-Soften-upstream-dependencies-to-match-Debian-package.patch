@@ -11,10 +11,10 @@ Signed-off-by: Keith Packard <keithp@keithp.com>
  2 files changed, 9 insertions(+), 8 deletions(-)
 
 diff --git a/mu/wheels/__init__.py b/mu/wheels/__init__.py
-index e10c1ad..ca7c4b9 100644
+index d0df4f9..774c1a5 100644
 --- a/mu/wheels/__init__.py
 +++ b/mu/wheels/__init__.py
-@@ -43,6 +43,7 @@ mode_packages = [
+@@ -45,6 +45,7 @@ mode_packages = [
      # qtconsole at the version specified in setup.py
      # FIXME: ipykernel max ver added for macOS 10.13 compatibility, min taken
      # from qtconsole 4.7.7. This is mirrored in setup.py
@@ -23,7 +23,7 @@ index e10c1ad..ca7c4b9 100644
      # FIXME: ipykernel<6 depends on ipython_genutils, but it isn't explicitly
      # declared as a dependency. It also depends on traitlets, which
 diff --git a/setup.py b/setup.py
-index 68b3da4..b0c585c 100644
+index cbc86fa..4e044f8 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -25,12 +25,12 @@ install_requires = [
@@ -60,7 +60,7 @@ index 68b3da4..b0c585c 100644
      # packages, brings in `pycodestyle` and `pyflakes` which are runtime
 @@ -58,7 +58,7 @@ install_requires = [
      "flake8 >= 3.8.3",
-     "black>=19.10b0;python_version>'3.5'",
+     "black>=19.10b0,<22.1.0;python_version>'3.5'",
      "appdirs>=1.4.3",
 -    "semver>=2.8.0",
 +    "semver>=2.0.1",

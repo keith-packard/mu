@@ -9,7 +9,7 @@ called at startup
  1 file changed, 6 insertions(+)
 
 diff --git a/setup.py b/setup.py
-index b0c585c..9faf509 100644
+index 4e044f8..52d1fb0 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -69,6 +69,12 @@ install_requires = [

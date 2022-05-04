@@ -10,3 +10,5 @@
 0010-Remove-references-to-non-DFSG-images-removed-from-so.patch
 0011-Remove-references-to-deleted-non-DFSG-compatible-res.patch
 0012-adjust-black-code-to-support-versions-18-and-19.patch
+0013-Allow-later-jupyter-client.patch
+0014-Allow-newer-ipykernel.patch

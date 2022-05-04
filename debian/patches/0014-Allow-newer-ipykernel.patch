@@ -1,0 +1,21 @@
+From: Keith Packard <keithp@keithp.com>
+Date: Wed, 4 May 2022 16:44:53 -0700
+Subject: Allow newer ipykernel
+
+---
+ setup.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/setup.py b/setup.py
+index 1d4375e..c318b8d 100644
+--- a/setup.py
++++ b/setup.py
+@@ -37,7 +37,7 @@ install_requires = [
+     # FIXME: ipykernel max added for macOS 10.13 compatibility, min taken from
+     # qtconsole 4.7.7. Full line can be removed after Mu v1.1 release.
+     # Dependency mirrored for user venv in mu/wheels/__init__.py
+-    "ipykernel>=4.1,<6",
++    "ipykernel>=4.1",
+     # FIXME: ipykernel<6 depends on ipython_genutils, but it isn't explicitly
+     # declared as a dependency. It also depends on traitlets, which
+     # incidentally brought ipython_genutils, but in v5.1 it was dropped, so as

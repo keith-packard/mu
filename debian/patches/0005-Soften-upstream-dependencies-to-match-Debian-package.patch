@@ -23,7 +23,7 @@ index d0df4f9..774c1a5 100644
      # FIXME: ipykernel<6 depends on ipython_genutils, but it isn't explicitly
      # declared as a dependency. It also depends on traitlets, which
 diff --git a/setup.py b/setup.py
-index cbc86fa..4e044f8 100644
+index a9c4f24..0ddb105 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -25,12 +25,12 @@ install_requires = [
@@ -52,7 +52,7 @@ index cbc86fa..4e044f8 100644
      #
      # adafruit-board-toolkit is used to find serial ports and help identify
      # CircuitPython boards in the CircuitPython mode.
-     "adafruit-board-toolkit~=1.1",
+     #"adafruit-board-toolkit~=1.1",
 -    "pyserial~=3.5",
 +    "pyserial~=3.5b0",
      "nudatus>=0.0.3",

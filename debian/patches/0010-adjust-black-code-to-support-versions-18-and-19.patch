@@ -9,10 +9,10 @@ version we've managed to load and adapt on the fly
  1 file changed, 21 insertions(+), 6 deletions(-)
 
 diff --git a/mu/logic.py b/mu/logic.py
-index dbce79b..704aa57 100644
+index 5c6d566..0ca1bbb 100644
 --- a/mu/logic.py
 +++ b/mu/logic.py
-@@ -1794,17 +1794,32 @@ class Editor(QObject):
+@@ -1829,17 +1829,32 @@ class Editor(QObject):
          # Only works on Python, so abort.
          if tab.path and not self.has_python_extension(tab.path):
              return

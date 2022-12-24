@@ -9,11 +9,11 @@ called at startup
  1 file changed, 6 insertions(+)
 
 diff --git a/setup.py b/setup.py
-index 0ddb105..202194d 100644
+index 0861243..f0dd424 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -69,6 +69,12 @@ install_requires = [
-     "wheel",
+@@ -76,6 +76,12 @@ install_requires = [
+     "pywin32; sys_platform=='win32'",
  ]
  
 +exclude = ("PyQt5", "QScintilla", "qtconsole", "PyQtChart")

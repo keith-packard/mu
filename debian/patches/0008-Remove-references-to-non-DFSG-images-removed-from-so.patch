@@ -100,7 +100,7 @@ index 8113889..45d6628 100644
  there is a REPL for live programming, but in this case it is an iPython based
  REPL that uses `project Jupyter <http://jupyter.org/>`_. As with other Jupyter
 diff --git a/docs/user-experience.rst b/docs/user-experience.rst
-index f4be757..6862cdc 100644
+index ad77bb1..8ce090f 100644
 --- a/docs/user-experience.rst
 +++ b/docs/user-experience.rst
 @@ -28,12 +28,6 @@ It's important to differentiate between design and usability. Plenty of

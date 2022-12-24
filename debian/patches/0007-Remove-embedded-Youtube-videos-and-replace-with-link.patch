@@ -8,10 +8,10 @@ Subject: Remove embedded Youtube videos and replace with links
  2 files changed, 4 insertions(+), 17 deletions(-)
 
 diff --git a/docs/index.rst b/docs/index.rst
-index 396f40b..ab1f862 100644
+index 677fd0b..b21a9f8 100644
 --- a/docs/index.rst
 +++ b/docs/index.rst
-@@ -93,14 +93,8 @@ Mu could be turned into a generic beginner's code editor and, thanks to the
+@@ -105,14 +105,8 @@ Mu could be turned into a generic beginner's code editor and, thanks to the
  wonderful support of the `Raspberry Pi Foundation <http://raspberrypi.org/>`_
  the work needed to make such changes was done over the summer of 2017.
  
@@ -29,7 +29,7 @@ index 396f40b..ab1f862 100644
  How?
  ----
 diff --git a/docs/user-experience.rst b/docs/user-experience.rst
-index 9aaafb8..f4be757 100644
+index 3ad59b7..ad77bb1 100644
 --- a/docs/user-experience.rst
 +++ b/docs/user-experience.rst
 @@ -171,15 +171,8 @@ MicroPython's REPL. I wondered "how hard can it be?" and set out to create an

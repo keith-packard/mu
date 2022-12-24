@@ -125,7 +125,7 @@ def test_ButtonBar_add_action():
     addAction.
     """
     bb = mu.interface.main.ButtonBar(None)
-    with mock.patch("builtins.super") as mock_s:
+    with mock.patch("mu.interface.main.super") as mock_s:
         bb.addAction("save", "Save", "save stuff")
         mock_s.assert_called_once_with()
     assert "save" in bb.slots
@@ -1111,6 +1111,49 @@ def test_Window_add_micropython_plotter():
         mock_data_flood_handler
     )
     w.add_plotter.assert_called_once_with(mock_plotter, "MicroPython Plotter")
+
+
+def test_Window_add_snek_repl():
+    """
+    Ensure the expected object is instantiated and add_repl is called for a
+    Snek based REPL.
+    """
+    w = mu.interface.main.Window()
+    w.add_repl = mock.MagicMock()
+    mock_connection = mock.MagicMock()
+
+    mock_repl = mock.MagicMock()
+    mock_repl_class = mock.MagicMock(return_value=mock_repl)
+    with mock.patch("mu.interface.main.SnekREPLPane", mock_repl_class):
+        w.add_snek_repl("Test REPL", mock_connection)
+    mock_repl_class.assert_called_once_with(mock_connection)
+
+    mock_connection.data_received.connect.assert_called_once_with(
+        mock_repl.process_bytes
+    )
+    w.add_repl.assert_called_once_with(mock_repl, "Test REPL")
+
+
+def test_Window_add_snek_repl_no_interrupt():
+    """
+    Ensure the expected object is instantiated and add_repl is called for a
+    Snek based REPL.
+    """
+    w = mu.interface.main.Window()
+    w.add_repl = mock.MagicMock()
+    mock_connection = mock.MagicMock()
+
+    mock_repl = mock.MagicMock()
+    mock_repl_class = mock.MagicMock(return_value=mock_repl)
+    with mock.patch("mu.interface.main.SnekREPLPane", mock_repl_class):
+        w.add_snek_repl("Test REPL", mock_connection, force_interrupt=False)
+    mock_repl_class.assert_called_once_with(mock_connection)
+
+    assert mock_connection.send_interrupt.call_count == 0
+    mock_connection.data_received.connect.assert_called_once_with(
+        mock_repl.process_bytes
+    )
+    w.add_repl.assert_called_once_with(mock_repl, "Test REPL")
 
 
 def test_Window_add_python3_plotter():
@@ -2220,6 +2263,88 @@ def test_Window_show_hide_device_selector():
     assert window.status_bar.device_selector.isHidden()
     window.show_device_selector()
     assert not (window.status_bar.device_selector.isHidden())
+
+
+def test_Window_upload_to_python_anywhere():
+    """
+    Ensure the expected progress dialog, worker and thread are created as
+    expected.
+    """
+    window = mu.interface.main.Window()
+    mock_progress = mock.MagicMock()
+    mock_progress_class = mock.MagicMock(return_value=mock_progress)
+    mock_thread = mock.MagicMock()
+    mock_thread_class = mock.MagicMock(return_value=mock_thread)
+    mock_worker = mock.MagicMock()
+    mock_worker_class = mock.MagicMock(return_value=mock_worker)
+    instance = "eu"
+    username = "test_username"
+    token = "test_token"
+    app_name = "test_appname"
+    files = {
+        "foo.py": "foo.py",
+    }
+    with mock.patch(
+        "mu.interface.main.QProgressDialog", mock_progress_class
+    ), mock.patch("mu.interface.main.QThread", mock_thread_class), mock.patch(
+        "mu.interface.main.PythonAnywhereWorker", mock_worker_class
+    ):
+        window.upload_to_python_anywhere(
+            instance, username, token, app_name, files
+        )
+        mock_progress_class.assert_called_once_with(
+            (
+                "Uploading to PythonAnywhere.\n\nThis may take some time "
+                "and pause at the end (as the website is started)."
+            ),
+            None,
+            0,
+            len(files),
+            window,
+        )
+        mock_progress.setModal.assert_called_once_with(True)
+        mock_progress.setAutoClose.assert_called_once_with(True)
+        mock_progress.show.assert_called_once_with()
+        mock_thread_class.assert_called_once_with()
+        mock_worker_class.assert_called_once_with(
+            instance, username, token, files, app_name, mock_progress
+        )
+        mock_worker.moveToThread.assert_called_once_with(mock_thread)
+        mock_thread.started.connect.assert_called_once_with(mock_worker.run)
+        mock_thread.finished.connect.assert_called_once_with(
+            mock_thread.deleteLater
+        )
+        mock_thread.start.assert_called_once_with()
+        assert mock_worker.finished.connect.call_count == 3
+        assert mock_worker.error.connect.call_count == 3
+
+
+def test_Window_handle_python_anywhere_complete():
+    """
+    When the upload to PythonAnywhere is complete, ensure the expected message
+    containing the referenced domain is show to the user.
+    """
+    window = mu.interface.main.Window()
+    window.show_message = mock.MagicMock()
+    domain = "foo.pythonanywhere.com"
+    window.handle_python_anywhere_complete(domain)
+    msg = window.show_message.call_args[0][0]
+    assert domain in msg
+
+
+def test_Window_handle_python_anywhere_error():
+    """
+    Ensure the expected error message is displayed to the user when handling a
+    problem case while uploading to PythonAnywhere.
+    """
+    window = mu.interface.main.Window()
+    window.show_message = mock.MagicMock()
+    window.progress = mock.MagicMock()
+    error_message = "Bang!"
+    window.handle_python_anywhere_error(error_message)
+    msg = window.show_message.call_args[0][0]
+    assert error_message in msg
+    window.progress.cancel.assert_called_once_with()
 
 
 def test_StatusBar_init():

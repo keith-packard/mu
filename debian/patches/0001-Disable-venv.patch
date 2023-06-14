@@ -7,14 +7,14 @@ Signed-off-by: Keith Packard <keithp@keithp.com>
  mu/app.py                 | 3 ++-
  mu/logic.py               | 6 ++++--
  mu/virtual_environment.py | 3 ++-
- setup.py                  | 1 +
- 4 files changed, 9 insertions(+), 4 deletions(-)
+ setup.py                  | 4 ++--
+ 4 files changed, 10 insertions(+), 6 deletions(-)
 
 diff --git a/mu/app.py b/mu/app.py
-index aaa4b2a..878da16 100644
+index 822f085..9a022e8 100644
 --- a/mu/app.py
 +++ b/mu/app.py
-@@ -144,7 +144,8 @@ class StartupWorker(QObject):
+@@ -146,7 +146,8 @@ class StartupWorker(QObject):
          called from here.
          """
          try:
@@ -60,14 +60,20 @@ index c84613a..9d14023 100644
 +# venv = VirtualEnvironment()
 +venv = None
 diff --git a/setup.py b/setup.py
-index 2a0e5dc..8b4fbc0 100644
+index 2a0e5dc..4f3acb4 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -127,6 +127,7 @@ setup(
-         "mu.interface",
-         "mu.modes.api",
-         "mu.wheels",
-+        "adafruit_board_toolkit",
-     ],
-     python_requires=">=3.5,<3.9",
-     install_requires=install_requires,
+@@ -64,11 +64,11 @@ install_requires = [
+     # virtualenv vendors pip, we need at least pip v19.3 to install some
+     # rust based dependencies. virtualenv >=v20 is required for the --symlinks
+     # flag needed by AppImage, and it packs pip v20.0.2.
+-    "virtualenv>=20.0.0",
++    #"virtualenv>=20.0.0",
+     #
+     # Needed for packaging
+     #
+-    "wheel",
++    #"wheel",
+     # Needed to deploy from web mode
+     "requests>=2.0.0",
+     #

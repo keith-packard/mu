@@ -7,8 +7,8 @@ This ensures that everything required is already packaged
 Signed-off-by: Keith Packard <keithp@keithp.com>
 ---
  mu/wheels/__init__.py |  1 +
- setup.py              | 33 ++++++++++++++++-----------------
- 2 files changed, 17 insertions(+), 17 deletions(-)
+ setup.py              | 35 +++++++++++++++++------------------
+ 2 files changed, 18 insertions(+), 18 deletions(-)
 
 diff --git a/mu/wheels/__init__.py b/mu/wheels/__init__.py
 index 40f32db..5620eb3 100644
@@ -23,7 +23,7 @@ index 40f32db..5620eb3 100644
      # FIXME: ipykernel<6 depends on ipython_genutils, but it isn't explicitly
      # declared as a dependency. It also depends on traitlets, which
 diff --git a/setup.py b/setup.py
-index d52e6c1..0861243 100644
+index cbda743..10da3d6 100644
 --- a/setup.py
 +++ b/setup.py
 @@ -25,30 +25,30 @@ install_requires = [
@@ -72,19 +72,20 @@ index d52e6c1..0861243 100644
 -    # Clamp click max version to workaround incompatibility with black<22.1.0
 -    "click<=8.0.4",
 -    "black>=19.10b0,<22.1.0;python_version>'3.5'",
-+    "click",
-+    "black>=22.1.0;python_version>'3.5'",
-     "platformdirs>=2.0.0,<3.0.0",
+-    "platformdirs>=2.0.0,<3.0.0",
 -    "semver>=2.8.0",
 -    # virtualenv vendors pip, we need at least pip v19.3 to install some
 -    # rust based dependencies. virtualenv >=v20 is required for the --symlinks
 -    # flag needed by AppImage, and it packs pip v20.0.2.
--    "virtualenv>=20.0.0",
+-    #"virtualenv>=20.0.0",
++    "click",
++    "black>=22.1.0;python_version>'3.5'",
++    "platformdirs>=2.0.0",
 +    "semver>=2.0.1",
 +    #
 +    # Needed for creating the runtime virtual environment
 +    #
-+    "virtualenv>=16.7.6",
++    #"virtualenv>=16.7.6",
      #
      # Needed for packaging
      #

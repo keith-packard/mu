@@ -770,7 +770,6 @@ def test_micropython_device_changed(microbit):
 
 
 def test_FileManager_on_start():
-
     """
     When a thread signals it has started, create a serial connection and then
     list the files.

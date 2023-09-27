@@ -227,6 +227,7 @@ class EditorPane(QsciScintilla):
         Connect clicking the margin to the passed in handler function, via a
         filtering handler that ignores clicks on margin 4.
         """
+
         # Margin 4 motivation in self.configure comments.
         def func_ignoring_margin_4(margin, line, modifiers):
             if margin != 4:

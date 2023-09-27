@@ -74,6 +74,7 @@ def get_default_workspace():
 
     return workspace_dir
 
+
 class SerialPorts:
     current_ports = []
     current_sequence = 0
@@ -81,7 +82,7 @@ class SerialPorts:
 
     def ports(self):
         new_time = time.monotonic()
-        if new_time - self.current_time > .5:
+        if new_time - self.current_time > 0.5:
             self.current_time = new_time
             available_ports = QSerialPortInfo.availablePorts()
             if len(self.current_ports) != len(available_ports):
@@ -91,9 +92,11 @@ class SerialPorts:
                 for i in range(len(available_ports)):
                     old = self.current_ports[i]
                     new = available_ports[i]
-                    if (old.portName() != new.portName() or
-                        old.description() != new.description() or
-                        old.serialNumber() != new.serialNumber()):
+                    if (
+                        old.portName() != new.portName()
+                        or old.description() != new.description()
+                        or old.serialNumber() != new.serialNumber()
+                    ):
                         self.current_ports = available_ports
                         self.current_sequence += 1
                         break
@@ -101,6 +104,7 @@ class SerialPorts:
 
 
 serial_ports = SerialPorts()
+
 
 class REPLConnection(QObject):
     serial = None

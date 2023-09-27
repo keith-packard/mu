@@ -329,7 +329,7 @@ def test_base_packages_installed(patched, venv, test_wheels):
     ) as mock_pip_install:
         venv.create()
 
-    for (mock_args, mock_kwargs) in mock_pip_install.call_args_list:
+    for mock_args, mock_kwargs in mock_pip_install.call_args_list:
         assert len(mock_args) == 1
         assert os.path.basename(mock_args[0]) in expected_args
         assert mock_kwargs == {"deps": False, "index": False}

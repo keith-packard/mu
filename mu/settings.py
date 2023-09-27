@@ -240,7 +240,6 @@ class SettingsBase(object):
 
 
 class UserSettings(SettingsBase):
-
     DEFAULTS = {
         "workspace": os.path.join(config.HOME_DIRECTORY, config.WORKSPACE_NAME)
     }
@@ -249,14 +248,12 @@ class UserSettings(SettingsBase):
 
 
 class SessionSettings(SettingsBase):
-
     DEFAULTS = {}
     autosave = True
     filestem = "session"
 
 
 class VirtualEnvironmentSettings(SettingsBase):
-
     DEFAULTS = {
         "baseline_packages": [],
     }

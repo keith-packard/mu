@@ -651,7 +651,7 @@ def test_MicroPythonREPLPane_process_tty_data_handle_malformed_unicode():
 
     # Test that malformed input are correctly replaced with the standard
     # unicode replacement character (�, U+FFFD)
-    assert rp.insertPlainText.call_args_list[4][0][0] == u"\uFFFD"
+    assert rp.insertPlainText.call_args_list[4][0][0] == "\uFFFD"
 
 
 def test_MicroPythonREPLPane_process_tty_data_VT100():

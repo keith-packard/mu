@@ -8,3 +8,5 @@
 0008-Remove-references-to-non-DFSG-images-removed-from-so.patch
 0009-Remove-references-to-deleted-non-DFSG-compatible-res.patch
 0010-adjust-black-code-to-support-versions-18-and-19.patch
+0011-Optimize-USB-device-polling.patch
+0012-Reformat-with-black.patch

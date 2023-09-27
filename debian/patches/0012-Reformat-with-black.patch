@@ -1,0 +1,177 @@
+From: Keith Packard <keithp@keithp.com>
+Date: Wed, 27 Sep 2023 16:42:39 -0700
+Subject: Reformat with black
+
+Signed-off-by: Keith Packard <keithp@keithp.com>
+---
+ mu/interface/editor.py                                |  1 +
+ mu/modes/base.py                                      | 12 ++++++++----
+ mu/settings.py                                        |  3 ---
+ setup.py                                              |  6 +++---
+ tests/interface/test_panes.py                         |  2 +-
+ tests/modes/test_base.py                              |  1 -
+ tests/virtual_environment/test_virtual_environment.py |  2 +-
+ utils/avatar.py                                       |  2 +-
+ 8 files changed, 15 insertions(+), 14 deletions(-)
+
+diff --git a/mu/interface/editor.py b/mu/interface/editor.py
+index fb2303c..d2aaeab 100644
+--- a/mu/interface/editor.py
++++ b/mu/interface/editor.py
+@@ -227,6 +227,7 @@ class EditorPane(QsciScintilla):
+         Connect clicking the margin to the passed in handler function, via a
+         filtering handler that ignores clicks on margin 4.
+         """
++
+         # Margin 4 motivation in self.configure comments.
+         def func_ignoring_margin_4(margin, line, modifiers):
+             if margin != 4:
+diff --git a/mu/modes/base.py b/mu/modes/base.py
+index 1bb0c76..d46cd42 100644
+--- a/mu/modes/base.py
++++ b/mu/modes/base.py
+@@ -74,6 +74,7 @@ def get_default_workspace():
+ 
+     return workspace_dir
+ 
++
+ class SerialPorts:
+     current_ports = []
+     current_sequence = 0
+@@ -81,7 +82,7 @@ class SerialPorts:
+ 
+     def ports(self):
+         new_time = time.monotonic()
+-        if new_time - self.current_time > .5:
++        if new_time - self.current_time > 0.5:
+             self.current_time = new_time
+             available_ports = QSerialPortInfo.availablePorts()
+             if len(self.current_ports) != len(available_ports):
+@@ -91,9 +92,11 @@ class SerialPorts:
+                 for i in range(len(available_ports)):
+                     old = self.current_ports[i]
+                     new = available_ports[i]
+-                    if (old.portName() != new.portName() or
+-                        old.description() != new.description() or
+-                        old.serialNumber() != new.serialNumber()):
++                    if (
++                        old.portName() != new.portName()
++                        or old.description() != new.description()
++                        or old.serialNumber() != new.serialNumber()
++                    ):
+                         self.current_ports = available_ports
+                         self.current_sequence += 1
+                         break
+@@ -102,6 +105,7 @@ class SerialPorts:
+ 
+ serial_ports = SerialPorts()
+ 
++
+ class REPLConnection(QObject):
+     serial = None
+     data_received = pyqtSignal(bytes)
+diff --git a/mu/settings.py b/mu/settings.py
+index 71a229b..371535e 100644
+--- a/mu/settings.py
++++ b/mu/settings.py
+@@ -240,7 +240,6 @@ class SettingsBase(object):
+ 
+ 
+ class UserSettings(SettingsBase):
+-
+     DEFAULTS = {
+         "workspace": os.path.join(config.HOME_DIRECTORY, config.WORKSPACE_NAME)
+     }
+@@ -249,14 +248,12 @@ class UserSettings(SettingsBase):
+ 
+ 
+ class SessionSettings(SettingsBase):
+-
+     DEFAULTS = {}
+     autosave = True
+     filestem = "session"
+ 
+ 
+ class VirtualEnvironmentSettings(SettingsBase):
+-
+     DEFAULTS = {
+         "baseline_packages": [],
+     }
+diff --git a/setup.py b/setup.py
+index ac1a673..00870dd 100644
+--- a/setup.py
++++ b/setup.py
+@@ -47,7 +47,7 @@ install_requires = [
+     #
+     # adafruit-board-toolkit is used to find serial ports and help identify
+     # CircuitPython boards in the CircuitPython mode.
+-    #"adafruit-board-toolkit~=1.1",
++    # "adafruit-board-toolkit~=1.1",
+     "pyserial~=3.5b0",
+     "nudatus>=0.0.3",
+     # `flake8` is actually a testing/packaging dependency that, among other
+@@ -63,11 +63,11 @@ install_requires = [
+     #
+     # Needed for creating the runtime virtual environment
+     #
+-    #"virtualenv>=16.7.6",
++    # "virtualenv>=16.7.6",
+     #
+     # Needed for packaging
+     #
+-    #"wheel",
++    # "wheel",
+     # Needed to deploy from web mode
+     "requests>=2.0.0",
+     #
+diff --git a/tests/interface/test_panes.py b/tests/interface/test_panes.py
+index d74e75c..f17ed35 100644
+--- a/tests/interface/test_panes.py
++++ b/tests/interface/test_panes.py
+@@ -651,7 +651,7 @@ def test_MicroPythonREPLPane_process_tty_data_handle_malformed_unicode():
+ 
+     # Test that malformed input are correctly replaced with the standard
+     # unicode replacement character (�, U+FFFD)
+-    assert rp.insertPlainText.call_args_list[4][0][0] == u"\uFFFD"
++    assert rp.insertPlainText.call_args_list[4][0][0] == "\uFFFD"
+ 
+ 
+ def test_MicroPythonREPLPane_process_tty_data_VT100():
+diff --git a/tests/modes/test_base.py b/tests/modes/test_base.py
+index 32fb6fe..26aaa60 100644
+--- a/tests/modes/test_base.py
++++ b/tests/modes/test_base.py
+@@ -770,7 +770,6 @@ def test_micropython_device_changed(microbit):
+ 
+ 
+ def test_FileManager_on_start():
+-
+     """
+     When a thread signals it has started, create a serial connection and then
+     list the files.
+diff --git a/tests/virtual_environment/test_virtual_environment.py b/tests/virtual_environment/test_virtual_environment.py
+index e433850..0310705 100644
+--- a/tests/virtual_environment/test_virtual_environment.py
++++ b/tests/virtual_environment/test_virtual_environment.py
+@@ -329,7 +329,7 @@ def test_base_packages_installed(patched, venv, test_wheels):
+     ) as mock_pip_install:
+         venv.create()
+ 
+-    for (mock_args, mock_kwargs) in mock_pip_install.call_args_list:
++    for mock_args, mock_kwargs in mock_pip_install.call_args_list:
+         assert len(mock_args) == 1
+         assert os.path.basename(mock_args[0]) in expected_args
+         assert mock_kwargs == {"deps": False, "index": False}
+diff --git a/utils/avatar.py b/utils/avatar.py
+index 30695ea..64a3f51 100644
+--- a/utils/avatar.py
++++ b/utils/avatar.py
+@@ -44,7 +44,7 @@ path = os.path.abspath(os.path.join(".git", "avatar"))
+ if not os.path.exists(path):
+     os.makedirs(path)
+ 
+-for (username, email) in users:
++for username, email in users:
+     print(f"Processing {username} {email}")
+     if "users.noreply.github.com" in email:
+         raw_username, _ = email.split("@")

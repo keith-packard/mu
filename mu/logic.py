@@ -712,13 +712,21 @@ class DeviceList(QtCore.QAbstractListModel):
         devices = []
         device_types = set()
         # Detect connected devices.
+        changed = False
         for mode_name, mode in self.modes.items():
+            if hasattr(mode, "check_devices"):
+                if not mode.check_devices():
+                    continue
             if hasattr(mode, "find_devices"):
                 # The mode can detect attached devices.
                 detected = mode.find_devices(with_logging=False)
+                changed = True
                 if detected:
                     device_types.add(mode_name)
                     devices.extend(detected)
+        if not changed:
+            return
+
         # Remove no-longer connected devices.
         for device in self:
             if device not in devices:

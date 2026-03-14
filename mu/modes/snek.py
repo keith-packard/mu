@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import logging
 from .base import MicroPythonMode, REPLConnection
 from .api import SNEK_APIS
-from mu.interface.panes import CHARTS
+from mu.interface.panes import CHARTS, PythonProcessPane
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import QTimer
 
@@ -172,6 +172,8 @@ class SnekMode(MicroPythonMode):
     save_timeout = 0  #: No auto-save on CP boards. Will restart.
     connected = True  #: is the board connected.
     force_interrupt = True  #: keyboard interrupt on serial connection.
+    proc = None
+    file = None
     valid_boards = [
         # VID  , PID   , manufact., device name
         (0xFFFE, None, None, "Altus Metrum"),
@@ -364,6 +366,11 @@ class SnekMode(MicroPythonMode):
     def stop(self):
         self.remove_repl()
 
+    def find_devices(self, with_logging=True, force=False):
+        devices = super().find_devices(with_logging=with_logging, force=force)
+        self.set_buttons(serial=(not not devices))
+        return devices
+
     def actions(self):
         """
         Return an ordered list of actions provided by this module. An action
@@ -376,6 +383,13 @@ class SnekMode(MicroPythonMode):
                 "description": _("Open a serial connection to your device."),
                 "handler": self.toggle_repl,
                 "shortcut": "CTRL+Shift+U",
+            },
+            {
+                "name": "repl",
+                "display_name": _("REPL"),
+                "description": _("Use the REPL for live coding."),
+                "handler": self.toggle_snek,
+                "shortcut": "CTRL+Shift+I",
             },
             {
                 "name": "flash",
@@ -421,14 +435,22 @@ class SnekMode(MicroPythonMode):
             )
             self.view.show_message(message, information)
             return
-        python_script = tab.text()
-        if not python_script or python_script[-1] != "\n":
-            python_script += "\n"
         if not self.repl:
             self.toggle_repl(None)
-        command = ("eeprom.write()\n" + python_script + "\x04" + "reset()\n",)
         if self.repl:
-            self.view.repl_pane.send_commands(command)
+            if self.proc:
+                if tab.isModified():
+                    self.editor.save()
+                    if tab.isModified():
+                        return
+                command = "reset()\n" + f"execfile('{tab.path}')\n"
+                self.view.repl_pane.write_to_stdin(bytes(command, 'utf-8'))
+            else:
+                python_script = tab.text()
+                if not python_script or python_script[-1] != "\n":
+                    python_script += "\n"
+                command = ("eeprom.write()\n" + python_script + "\x04" + "reset()\n",)
+                self.view.repl_pane.send_commands(command)
 
     def get_tab(self):
         for tab in self.view.widgets:
@@ -472,6 +494,34 @@ class SnekMode(MicroPythonMode):
         tips.
         """
         return SNEK_APIS
+
+    def remove_repl(self):
+        if self.proc:
+            self.proc.stop_process()
+            self.proc = None
+        super().remove_repl()
+
+    def add_snek(self):
+        """
+        Add a local REPL
+        """
+        self.proc = PythonProcessPane()
+        self.proc.start_process('snek',
+                                None,
+                                self.workspace_dir())
+        self.view.add_repl(self.proc, 'Snek')
+        self.repl = True
+
+    def toggle_snek(self):
+        """
+        Toggles the local REPL on and off.
+        """
+        if self.repl:
+            self.remove_repl()
+            logger.info("Toggle REPL off.")
+        else:
+            self.add_snek()
+            logger.info("Toggle local REPL on.")
 
     def add_repl(self):
         """
@@ -538,10 +588,15 @@ class SnekMode(MicroPythonMode):
         """
         # Reconnect REPL, Plotter and send interrupt
         if self.repl:
+            was_local = self.proc
             self.remove_repl()
-            self.add_repl()
+            if was_local:
+                self.add_snek()
+            else:
+                self.add_repl()
         if self.plotter:
             self.remove_plotter()
             self.add_plotter()
         if self.connection:
             self.connection.send_interrupt()
+        self.set_buttons(serial=(self.editor.current_device != None))

@@ -1033,4 +1033,37 @@ class VirtualEnvironment(object):
 # the application
 #
 # venv = VirtualEnvironment()
-venv = None
+
+class FakeVenv(VirtualEnvironment):
+    """
+    Support venv API but without a virtual environment
+    """
+
+    def __init__(self):
+        self.process = Process()
+        self._is_windows = sys.platform == "win32"
+        self._bin_extension = ".exe" if self._is_windows else ""
+        self.settings = settings.VirtualEnvironmentSettings()
+        self.settings.init()
+        self.interpreter="python3"
+        self.path="."
+        self.pip_executable="pip3"
+        self.name="python3"
+
+    def __str__(self):
+        return "<%s at %s>" % (self.__class__.__name__, self.path)
+
+    def ensure_and_create(self, emitter=None):
+        return
+
+    def ensure_pip(self):
+        return
+
+    def create_venv(self):
+        return
+
+    def create(self):
+        self.settings["mu_version"] = mu_version
+        return
+
+venv = FakeVenv()
